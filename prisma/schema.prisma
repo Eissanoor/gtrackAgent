@@ -1,0 +1,71 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Brand model - represents product brands (e.g., oil brands)
+model Brand {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  category  String    // e.g., "oil", "grocery", etc.
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  products  Product[]
+
+  @@map("brands")
+}
+
+// Unit model - represents measurement units (e.g., liter, kg)
+model Unit {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique // e.g., "liter", "kg"
+  shortName String?   // e.g., "L", "kg"
+  type      String    // e.g., "volume", "weight", "quantity"
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  products  Product[]
+
+  @@map("units")
+}
+
+// GCP (Global Category Product) model
+model GCP {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  category    String    // Main category (e.g., "oil", "beverage")
+  subcategory String?   // Optional subcategory
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  products    Product[]
+
+  @@map("gcps")
+}
+
+// Product model - main model that references other tables
+model Product {
+  id        Int      @id @default(autoincrement())
+  name      String
+  sku       String   @unique
+  price     Decimal  @db.Decimal(10, 2)
+  quantity  Decimal  @db.Decimal(10, 2)
+  brandId   Int?
+  unitId    Int?
+  gcpId     Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  brand     Brand?   @relation(fields: [brandId], references: [id])
+  unit      Unit?    @relation(fields: [unitId], references: [id])
+  gcp       GCP?     @relation(fields: [gcpId], references: [id])
+
+  @@map("products")
+}

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GTrack Agent - <%= typeof title !== 'undefined' ? title : 'Inventory Management' %></title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        .sidebar {
+            min-height: 100vh;
+            background-color: #343a40;
+            color: white;
+        }
+        .sidebar a {
+            color: rgba(255, 255, 255, 0.85);
+            text-decoration: none;
+            display: block;
+            padding: 10px 15px;
+        }
+        .sidebar a:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        .sidebar a.active {
+            background-color: #0d6efd;
+            color: white;
+        }
+        .sidebar-heading {
+            padding: 10px 15px;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        main {
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-3 col-lg-2 d-md-block sidebar collapse">
+                <div class="sidebar-heading">
+                    GTrack Agent
+                </div>
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="<%= path === '/' ? 'active' : '' %>" href="/">
+                            <i class="bi bi-house-door"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="<%= path === '/products' ? 'active' : '' %>" href="/products">
+                            <i class="bi bi-box-seam"></i> Products
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="<%= path === '/brands' ? 'active' : '' %>" href="/brands">
+                            <i class="bi bi-tags"></i> Brands
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="<%= path === '/units' ? 'active' : '' %>" href="/units">
+                            <i class="bi bi-rulers"></i> Units
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="<%= path === '/gcps' ? 'active' : '' %>" href="/gcps">
+                            <i class="bi bi-diagram-3"></i> GCP Categories
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            
+            <!-- Main Content -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                <%- body %>
+            </main>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        // Common JavaScript will go here
+        document.addEventListener('DOMContentLoaded', function() {
+            // Any global initialization
+        });
+    </script>
+</body>
+</html>

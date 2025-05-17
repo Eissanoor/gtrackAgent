@@ -1,0 +1,121 @@
+<%- include('layout', {path: '/', title: 'Dashboard'}) %>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1>GTrack Agent Dashboard</h1>
+            <p class="lead">Welcome to the GTrack Inventory Management System</p>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-primary mb-3">
+                <div class="card-header">Products</div>
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-box-seam"></i> <span id="productCount">--</span></h5>
+                    <p class="card-text">Total products in inventory</p>
+                    <a href="/products" class="btn btn-light btn-sm">Manage Products</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card text-white bg-success mb-3">
+                <div class="card-header">Brands</div>
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-tags"></i> <span id="brandCount">--</span></h5>
+                    <p class="card-text">Registered product brands</p>
+                    <a href="/brands" class="btn btn-light btn-sm">Manage Brands</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card text-white bg-info mb-3">
+                <div class="card-header">Units</div>
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-rulers"></i> <span id="unitCount">--</span></h5>
+                    <p class="card-text">Available measurement units</p>
+                    <a href="/units" class="btn btn-light btn-sm">Manage Units</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card text-white bg-warning mb-3">
+                <div class="card-header">GCP Categories</div>
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-diagram-3"></i> <span id="gcpCount">--</span></h5>
+                    <p class="card-text">Global categorization</p>
+                    <a href="/gcps" class="btn btn-light btn-sm">Manage GCPs</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-12">
+            <h3>Quick Actions</h3>
+            <div class="d-flex gap-2">
+                <a href="/products/add" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Add Product
+                </a>
+                <a href="/brands/add" class="btn btn-success">
+                    <i class="bi bi-plus-circle"></i> Add Brand
+                </a>
+                <a href="/units/add" class="btn btn-info text-white">
+                    <i class="bi bi-plus-circle"></i> Add Unit
+                </a>
+                <a href="/gcps/add" class="btn btn-warning text-white">
+                    <i class="bi bi-plus-circle"></i> Add GCP Category
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Fetch dashboard counts from API
+    document.addEventListener('DOMContentLoaded', function() {
+        // Fetch products count
+        fetch('/api/products')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('productCount').textContent = data.data.length;
+                }
+            })
+            .catch(error => console.error('Error fetching products:', error));
+            
+        // Fetch brands count
+        fetch('/api/brands')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('brandCount').textContent = data.data.length;
+                }
+            })
+            .catch(error => console.error('Error fetching brands:', error));
+            
+        // Fetch units count
+        fetch('/api/units')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('unitCount').textContent = data.data.length;
+                }
+            })
+            .catch(error => console.error('Error fetching units:', error));
+            
+        // Fetch GCPs count
+        fetch('/api/gcps')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('gcpCount').textContent = data.data.length;
+                }
+            })
+            .catch(error => console.error('Error fetching GCPs:', error));
+    });
+</script>

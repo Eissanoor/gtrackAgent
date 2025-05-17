@@ -1,0 +1,47 @@
+const express = require('express');
+const dotenv = require('dotenv');
+const path = require('path');
+const expressLayouts = require('express-ejs-layouts');
+
+// Load environment variables
+dotenv.config();
+
+// Import routes
+const productRoutes = require('./src/routes/productRoutes');
+
+// Create Express app
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Set view engine
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'src/views'));
+app.use(expressLayouts);
+app.set('layout', false); // We're manually including the layout in each view
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Routes
+app.use('/api/products', productRoutes);
+
+// Root route
+app.get('/', (req, res) => {
+  res.render('index', { title: 'GTrack Agent' });
+});
+
+// Start the server
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled Rejection:', err);
+  // Don't crash the server
+  // process.exit(1);
+});
+
+module.exports = app;
