@@ -119,19 +119,52 @@ function inferUnitType(unitData) {
  */
 exports.getAllProducts = async (req, res) => {
   try {
-    // Parse pagination parameters
-    const page = parseInt(req.query.page) || 1;
-    const pageSize = parseInt(req.query.pageSize) || 10;
-    const skip = (page - 1) * pageSize;
+    // Check if specific product ID is requested
+    const productId = req.query.id;
+    let products = [];
+    let totalCount = 0;
     
-    // Get total count for pagination
-    const totalCount = await prisma.Product.count();
+    if (productId) {
+      // If specific product ID is provided, fetch just that product
+      const product = await prisma.Product.findUnique({
+        where: {
+          id: productId
+        }
+      });
+      
+      if (!product) {
+        return res.status(404).json({ 
+          success: false, 
+          message: `Product with ID ${productId} not found`
+        });
+      }
+      
+      products = [product];
+      totalCount = 1;
+    } else {
+      // Regular pagination handling
+      const page = parseInt(req.query.page) || 1;
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const skip = (page - 1) * pageSize;
+      
+      // Get total count for pagination
+      totalCount = await prisma.Product.count();
+      
+      // Fetch paginated products
+      products = await prisma.Product.findMany({
+        skip,
+        take: pageSize
+      });
+    }
     
-    // Fetch paginated products
-    const products = await prisma.Product.findMany({
-      skip,
-      take: pageSize
-    });
+    // If no products found
+    if (products.length === 0) {
+      return res.json({
+        success: true,
+        message: "No products found",
+        data: []
+      });
+    }
     
     // Fetch related data separately
     const brandNames = products.map(p => p.BrandName).filter(Boolean);
@@ -429,18 +462,31 @@ exports.getAllProducts = async (req, res) => {
       };
     });
     
-    res.json({
-      success: true,
-      pagination: {
-        page,
-        pageSize,
-        totalCount,
-        totalPages: Math.ceil(totalCount / pageSize),
-        hasNext: page < Math.ceil(totalCount / pageSize),
-        hasPrevious: page > 1
-      },
-      data: verifiedProducts
-    });
+    // Customize response based on request type (single product or paginated)
+    if (productId) {
+      // For single product request, return simplified response
+      res.json({
+        success: true,
+        data: verifiedProducts[0]
+      });
+    } else {
+      // For paginated request, include pagination info
+      const page = parseInt(req.query.page) || 1;
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      
+      res.json({
+        success: true,
+        pagination: {
+          page,
+          pageSize,
+          totalCount,
+          totalPages: Math.ceil(totalCount / pageSize),
+          hasNext: page < Math.ceil(totalCount / pageSize),
+          hasPrevious: page > 1
+        },
+        data: verifiedProducts
+      });
+    }
   } catch (error) {
     console.error('Error fetching products:', error);
     res.status(500).json({ success: false, message: error.message, error: 'Server error' });
