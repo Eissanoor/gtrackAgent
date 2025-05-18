@@ -121,6 +121,7 @@ exports.getAllProducts = async (req, res) => {
   try {
     // Check if specific product ID is requested
     const productId = req.query.id;
+    
     let products = [];
     let totalCount = 0;
     
@@ -151,9 +152,13 @@ exports.getAllProducts = async (req, res) => {
       totalCount = await prisma.Product.count();
       
       // Fetch paginated products
+      //here also sort into descending order of created_at
       products = await prisma.Product.findMany({
         skip,
-        take: pageSize
+        take: pageSize,
+        orderBy: {
+          created_at: 'desc'
+        }
       });
     }
     
