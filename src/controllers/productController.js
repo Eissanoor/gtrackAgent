@@ -121,27 +121,39 @@ exports.getAllProducts = async (req, res) => {
   try {
     // Check if specific product ID is requested
     const productId = req.query.id;
-    
+    const user_id = req.query.user_id;
     let products = [];
     let totalCount = 0;
     
-    if (productId) {
-      // If specific product ID is provided, fetch just that product
-      const product = await prisma.Product.findUnique({
-        where: {
-          id: productId
-        }
-      });
+    if (productId || user_id) {
+      // Build where conditions with AND logic
+      const whereConditions = {
+        deleted_at: null,
+        AND: []
+      };
       
-      if (!product) {
-        return res.status(404).json({ 
-          success: false, 
-          message: `Product with ID ${productId} not found`
-        });
+      // Add conditions based on which parameters are provided
+      if (productId) {
+        whereConditions.AND.push({ id: productId });
       }
       
-      products = [product];
-      totalCount = 1;
+      if (user_id) {
+        whereConditions.AND.push({ user_id: user_id });
+      }
+      
+      // Fetch products matching either productId OR user_id
+      products = await prisma.Product.findMany({
+        where: whereConditions
+      });
+      
+      totalCount = products.length;
+      
+      if (products.length === 0) {
+        return res.status(404).json({ 
+          success: false, 
+          message: `No products found with the provided criteria`
+        });
+      }
     } else {
       // Regular pagination handling
       const page = parseInt(req.query.page) || 1;
@@ -149,25 +161,23 @@ exports.getAllProducts = async (req, res) => {
       const skip = (page - 1) * pageSize;
       
       // Get total count for pagination
-      totalCount = await prisma.Product.count();
+      totalCount = await prisma.Product.count({
+        where: {
+          deleted_at: null
+        }
+      });
       
       // Fetch paginated products
       //here also sort into descending order of created_at
       products = await prisma.Product.findMany({
+        where: {
+          deleted_at: null
+        },
         skip,
         take: pageSize,
         orderBy: {
           created_at: 'desc'
         }
-      });
-    }
-    
-    // If no products found
-    if (products.length === 0) {
-      return res.json({
-        success: true,
-        message: "No products found",
-        data: []
       });
     }
     
@@ -254,6 +264,12 @@ exports.getAllProducts = async (req, res) => {
           severity: 'critical',
           message: 'Product must have a front image'
         });
+        
+        verification.aiSuggestions.push({
+          field: 'front_image',
+          suggestion: 'Upload a high-quality front image of the product showing the packaging and product details clearly. This is essential for product verification and customer recognition.',
+          importance: 'Critical'
+        });
       }
       
       // If BrandName is null, product is unverified
@@ -265,6 +281,12 @@ exports.getAllProducts = async (req, res) => {
           rule: 'Required Brand',
           severity: 'critical',
           message: 'Product must have a brand name'
+        });
+        
+        verification.aiSuggestions.push({
+          field: 'BrandName',
+          suggestion: 'Add the product\'s official brand name. If this is a private label product, enter your company name as the brand. Ensure the brand name matches what appears on the product packaging.',
+          importance: 'Critical'
         });
       }
       
@@ -278,6 +300,12 @@ exports.getAllProducts = async (req, res) => {
           severity: 'critical',
           message: 'Product must have a Global Product Classification (GPC)'
         });
+        
+        verification.aiSuggestions.push({
+          field: 'gpc',
+          suggestion: 'Select an appropriate Global Product Classification (GPC) that accurately describes your product category. This classification helps in proper categorization and searchability of your product.',
+          importance: 'Critical'
+        });
       }
       
       // If unit is null, product is unverified
@@ -289,6 +317,12 @@ exports.getAllProducts = async (req, res) => {
           rule: 'Required Unit',
           severity: 'critical',
           message: 'Product must have a unit of measurement'
+        });
+        
+        verification.aiSuggestions.push({
+          field: 'unit',
+          suggestion: 'Specify the appropriate unit of measurement for your product (e.g., kg, liter, piece). The unit should match the physical characteristics of your product.',
+          importance: 'Critical'
         });
       }
       
@@ -350,6 +384,24 @@ exports.getAllProducts = async (req, res) => {
               severity: 'high',
               message: `Product category (${detectedProductCategories.join(', ')}) does not match GPC category (${detectedGpcCategories.join(', ')})`
             });
+            
+            // Add professional AI suggestion for category mismatch
+            let recommendedGpc = '';
+            if (detectedProductCategories.includes('oil')) {
+              recommendedGpc = 'lubricants or engine oils';
+            } else if (detectedProductCategories.includes('food')) {
+              recommendedGpc = 'food items or consumables';
+            } else if (detectedProductCategories.includes('beverage')) {
+              recommendedGpc = 'beverages or drinks';
+            } else if (detectedProductCategories.includes('electronics')) {
+              recommendedGpc = 'electronic appliances or devices';
+            }
+            
+            verification.aiSuggestions.push({
+              field: 'gpc',
+              suggestion: `There appears to be a mismatch between your product category and GPC classification. Based on your product "${product.productnameenglish}" and brand "${product.BrandName}", we suggest using a GPC related to ${recommendedGpc}. This ensures accurate product categorization and improves searchability.`,
+              importance: 'High'
+            });
           }
         }
       }
@@ -383,6 +435,13 @@ exports.getAllProducts = async (req, res) => {
             severity: 'high',
             message: `A liquid product should use volume units (like liter), but uses ${unitType} unit (${unitName})`
           });
+          
+          verification.aiSuggestions.push({
+            field: 'unit',
+            suggestion: `Your product "${product.productnameenglish}" appears to be a liquid product but is using ${unitType} units. For liquid products, we recommend using volume units such as liters (L), milliliters (mL), fluid ounces (fl oz), or gallons. This ensures accurate quantity representation and improves consumer understanding.`,
+            importance: 'High',
+            recommended_units: ['L', 'ML', 'FL OZ']
+          });
         } else if (isWeightProduct && unitType !== 'weight') {
           verification.isValid = false;
           verification.verificationStatus = 'unverified';
@@ -391,6 +450,13 @@ exports.getAllProducts = async (req, res) => {
             severity: 'high',
             message: `A weight-based product should use weight units (like kg), but uses ${unitType} unit (${unitName})`
           });
+          
+          verification.aiSuggestions.push({
+            field: 'unit',
+            suggestion: `Your product "${product.productnameenglish}" appears to be a weight-based product but is using ${unitType} units. For such products, we recommend using weight units such as kilograms (kg), grams (g), pounds (lb), or ounces (oz). This ensures accurate measurement representation and improves consumer understanding.`,
+            importance: 'High',
+            recommended_units: ['KG', 'G', 'LB', 'OZ']
+          });
         } else if (isCountProduct && unitType !== 'quantity') {
           verification.isValid = false;
           verification.verificationStatus = 'unverified';
@@ -398,6 +464,13 @@ exports.getAllProducts = async (req, res) => {
             rule: 'Unit Compatibility',
             severity: 'high',
             message: `A quantity-based product should use quantity units (like piece), but uses ${unitType} unit (${unitName})`
+          });
+          
+          verification.aiSuggestions.push({
+            field: 'unit',
+            suggestion: `Your product "${product.productnameenglish}" appears to be a quantity-based item but is using ${unitType} units. For such products, we recommend using quantity units such as piece, each, count, or unit. This ensures accurate quantity representation and improves consumer understanding.`,
+            importance: 'High',
+            recommended_units: ['PC', 'EA', 'CT', 'UNIT']
           });
         }
         
@@ -410,6 +483,45 @@ exports.getAllProducts = async (req, res) => {
             rule: 'Unit Compatibility',
             severity: 'high',
             message: `Oil products should use volume units (like liter), but uses ${unitCode} unit`
+          });
+          
+          verification.aiSuggestions.push({
+            field: 'unit',
+            suggestion: `Your product "${product.productnameenglish}" is an oil product which should be measured in volume units. Please use liters (L) or milliliters (ML) for engine oils and lubricants. Using the correct unit is critical for industry standards compliance and accurate quantity representation.`,
+            importance: 'High',
+            recommended_units: ['L', 'LTR', 'ML']
+          });
+        }
+      }
+      
+      // Add general suggestions when product is unverified
+      if (verification.verificationStatus === 'unverified' && verification.aiSuggestions.length === 0) {
+        verification.aiSuggestions.push({
+          field: 'general',
+          suggestion: 'Please review all product information for accuracy and completeness. Ensure all required fields are filled and product details are consistent across all fields.',
+          importance: 'Medium'
+        });
+      }
+      
+      // Add industry-specific suggestions based on product type
+      if (product.productnameenglish) {
+        const productNameLower = product.productnameenglish.toLowerCase();
+        
+        // For oil products
+        if (productNameLower.includes('oil') && verification.isValid) {
+          verification.aiSuggestions.push({
+            field: 'enhancementTip',
+            suggestion: 'Consider adding technical specifications such as viscosity grade and API certification in the product description to provide more valuable information to potential customers.',
+            importance: 'Low'
+          });
+        }
+        
+        // For food products
+        if (productNameLower.includes('food') && verification.isValid) {
+          verification.aiSuggestions.push({
+            field: 'enhancementTip',
+            suggestion: 'Consider adding nutritional information and allergen details in the product description to enhance consumer trust and meet regulatory requirements.',
+            importance: 'Low'
           });
         }
       }
@@ -454,3 +566,4 @@ exports.getAllProducts = async (req, res) => {
     res.status(500).json({ success: false, message: error.message, error: 'Server error' });
   }
 };
+
