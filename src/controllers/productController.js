@@ -272,6 +272,25 @@ function getRecommendedUnits(productCategory) {
   };
 }
 
+// Fallback for when database operations fail
+const fallbackResponse = {
+  success: false,
+  message: "Failed to connect to database. Please check your database connection settings.",
+  error: "Database connection error"
+};
+
+/**
+ * Safe database query wrapper to handle potential errors
+ */
+async function safeDbQuery(queryFn, fallback = []) {
+  try {
+    return await queryFn();
+  } catch (error) {
+    console.error('Database query error:', error.message);
+    return fallback;
+  }
+}
+
 /**
  * Validate product relationship between brand, unit, and GCP.
  * This function acts as an AI agent to verify if the combinations make sense.
@@ -282,13 +301,23 @@ function getRecommendedUnits(productCategory) {
  */
 exports.getAllProducts = async (req, res) => {
   try {
+    console.log('Starting getAllProducts function with query parameters:', req.query);
+    console.log('Database clients status:', { 
+      gtrackDB: typeof gtrackDB, 
+      gtrackDBModels: gtrackDB ? Object.keys(gtrackDB) : 'Client undefined',
+      gs1DB: typeof gs1DB,
+      gs1DBModels: gs1DB ? Object.keys(gs1DB) : 'Client undefined'
+    });
+    
     // Check if specific product ID is requested
     const productId = req.query.id;
-    const user_id = req.query.user_id;
+    const member_id = req.query.member_id;
+    console.log('Search parameters:', { productId, member_id });
+    
     let products = [];
     let totalCount = 0;
     
-    if (productId || user_id) {
+    if (productId || member_id) {
       // Build where conditions with AND logic
       const whereConditions = {
         deleted_at: null,
@@ -300,15 +329,23 @@ exports.getAllProducts = async (req, res) => {
         whereConditions.AND.push({ id: productId });
       }
       
-      if (user_id) {
-        whereConditions.AND.push({ user_id: user_id });
+      if (member_id) {
+        whereConditions.AND.push({ member_id: member_id });
       }
       
-      // Fetch products matching both productId AND user_id
-      // Products are in GTRACKDB
-      products = await gtrackDB.Product.findMany({
+      console.log('Where conditions for query:', JSON.stringify(whereConditions, null, 2));
+      
+      if (!gtrackDB || !gtrackDB.products) {
+        console.error('GTRACKDB or products model is not available');
+        return res.status(500).json(fallbackResponse);
+      }
+      
+      // Fetch products matching both productId AND member_id
+      console.log('Attempting to query products table...');
+      products = await safeDbQuery(() => gtrackDB.products.findMany({
         where: whereConditions
-      });
+      }));
+      console.log('Query completed, found products:', products.length);
       
       totalCount = products.length;
       
@@ -324,15 +361,20 @@ exports.getAllProducts = async (req, res) => {
       const pageSize = parseInt(req.query.pageSize) || 10;
       const skip = (page - 1) * pageSize;
       
+      if (!gtrackDB || !gtrackDB.products) {
+        console.error('GTRACKDB or products model is not available');
+        return res.status(500).json(fallbackResponse);
+      }
+      
       // Get total count for pagination from GTRACKDB
-      totalCount = await gtrackDB.Product.count({
+      totalCount = await safeDbQuery(() => gtrackDB.products.count({
         where: {
           deleted_at: null
         }
-      });
+      }), 0);
       
       // Fetch paginated products from GTRACKDB
-      products = await gtrackDB.Product.findMany({
+      products = await safeDbQuery(() => gtrackDB.products.findMany({
         where: {
           deleted_at: null
         },
@@ -341,7 +383,7 @@ exports.getAllProducts = async (req, res) => {
         orderBy: {
           created_at: 'desc'
         }
-      });
+      }));
     }
     
     // Fetch related data separately
@@ -349,35 +391,48 @@ exports.getAllProducts = async (req, res) => {
     const unitCodes = products.map(p => p.unit).filter(Boolean);
     const gpcCodes = products.map(p => p.gpc).filter(Boolean);
     
+    if (!gs1DB) {
+      console.error('GS1DB client is not available');
+      // Continue without related data
+    }
+    
     // Fetch brands from GS1DB
-    const brands = await gs1DB.Brand.findMany({
-      where: {
-        name: {
-          in: brandNames
+    let brands = [];
+    if (gs1DB && gs1DB.Brand) {
+      brands = await safeDbQuery(() => gs1DB.Brand.findMany({
+        where: {
+          name: {
+            in: brandNames
+          }
         }
-      }
-    });
+      }));
+    }
     
     // Fetch units from GS1DB
-    const units = await gs1DB.Unit.findMany({
-      where: {
-        unit_code: {
-          in: unitCodes
+    let units = [];
+    if (gs1DB && gs1DB.Unit) {
+      units = await safeDbQuery(() => gs1DB.Unit.findMany({
+        where: {
+          unit_code: {
+            in: unitCodes
+          }
         }
-      }
-    });
+      }));
+    }
     
     // Fetch GPC classes from GS1DB if the table exists
     let gpcClasses = [];
-    try {
-      // Try to find GPC classes using the code from products in GS1DB
-      gpcClasses = await gs1DB.$queryRaw`
-        SELECT * FROM gpc_classes 
-        WHERE class_code IN (${gpcCodes.join(',')}) OR id IN (${gpcCodes.join(',')})
-      `;
-    } catch (error) {
-      console.log('GPC classes query error:', error.message);
-      // If error occurs, it might be that the table doesn't exist or has a different structure
+    if (gs1DB && gs1DB.$queryRaw) {
+      try {
+        // Try to find GPC classes using the code from products in GS1DB
+        gpcClasses = await gs1DB.$queryRaw`
+          SELECT * FROM gpc_classes 
+          WHERE class_code IN (${gpcCodes.join(',')}) OR id IN (${gpcCodes.join(',')})
+        `;
+      } catch (error) {
+        console.log('GPC classes query error:', error.message);
+        // If error occurs, it might be that the table doesn't exist or has a different structure
+      }
     }
     
     // Create lookup tables for brands, units and GPCs

@@ -8,6 +8,7 @@ dotenv.config();
 
 // Import routes
 const productRoutes = require('./src/routes/productRoutes');
+const testRoutes = require('./src/routes/testRoutes');
 
 // Create Express app
 const app = express();
@@ -26,6 +27,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Routes
 app.use('/api/products', productRoutes);
+app.use('/api/test', testRoutes);
 
 // Root route
 app.get('/', (req, res) => {
