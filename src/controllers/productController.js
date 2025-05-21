@@ -292,6 +292,77 @@ async function safeDbQuery(queryFn, fallback = []) {
 }
 
 /**
+ * Parse GPC string into separate code and description components
+ * @param {string} gpcString - Raw GPC string (e.g., "20002871-Type of Engine Oil Target")
+ * @returns {Object} - Object with code and description
+ */
+function parseGPC(gpcString) {
+  if (!gpcString) return { code: null, description: null };
+  
+  // Check if the GPC contains a hyphen separator
+  if (gpcString.includes('-')) {
+    const [code, ...descParts] = gpcString.split('-');
+    const description = descParts.join('-').trim();
+    return { 
+      code: code.trim(), 
+      description 
+    };
+  } 
+  // If there's no hyphen but it starts with digits, assume those are the code
+  else if (/^\d+/.test(gpcString)) {
+    const codeMatch = gpcString.match(/^(\d+)/);
+    if (codeMatch) {
+      const code = codeMatch[1];
+      const description = gpcString.substring(code.length).trim();
+      return { 
+        code, 
+        description: description || null 
+      };
+    }
+  }
+  
+  // If we can't extract a code, return the whole thing as description
+  return { 
+    code: null, 
+    description: gpcString 
+  };
+}
+
+/**
+ * Parse unit string into better components
+ * @param {string} unitString - Raw unit string 
+ * @param {Object} unitData - Unit data from database
+ * @returns {Object} - Enhanced unit info
+ */
+function parseUnit(unitString, unitData) {
+  if (!unitString) return { code: null, name: null, type: null };
+  
+  const unitCode = unitString.trim();
+  let unitName = unitData && unitData.unit_name ? unitData.unit_name : null;
+  const unitType = inferUnitType({ unit_code: unitCode, unit_name: unitName });
+  
+  // Derive full unit name if missing
+  if (!unitName) {
+    switch(unitCode.toLowerCase()) {
+      case 'kg': unitName = 'Kilogram'; break;
+      case 'g': unitName = 'Gram'; break;
+      case 'l': 
+      case 'ltr': unitName = 'Liter'; break;
+      case 'ml': unitName = 'Milliliter'; break;
+      case 'pc': 
+      case 'ea': unitName = 'Piece'; break;
+      default: unitName = unitCode;
+    }
+  }
+  
+  return {
+    code: unitCode,
+    name: unitName,
+    type: unitType
+  };
+}
+
+/**
  * Validate product relationship between brand, unit, and GCP.
  * This function acts as an AI agent to verify if the combinations make sense.
  * The function automatically fetches product data and analyzes if the relationships are valid.
@@ -460,6 +531,10 @@ exports.getAllProducts = async (req, res) => {
       // Get the actual GPC data from our lookup
       const gpcData = product.gpc ? gpcLookup[product.gpc] : null;
       
+      // Parse GPC and unit data
+      const parsedGPC = parseGPC(product.gpc);
+      const parsedUnit = parseUnit(product.unit, unitData);
+      
       // Initialize verification object with AI analysis data
       const verification = {
         isValid: true,         // Default to valid until proven otherwise
@@ -469,6 +544,15 @@ exports.getAllProducts = async (req, res) => {
         issues: [],           // List of identified issues
         missingFields: [],    // List of missing fields
         aiSuggestions: []      // AI suggestions for improvement
+      };
+      
+      // Enhanced product with parsed data
+      const enhancedProduct = {
+        ...product,
+        parsedData: {
+          gpc: parsedGPC,
+          unit: parsedUnit
+        }
       };
       
       // RULE 1: Check for required fields (front_image, BrandName, gpc, unit)
@@ -551,11 +635,14 @@ exports.getAllProducts = async (req, res) => {
         const brandNameLower = product.BrandName.toLowerCase();
         const gpcLower = product.gpc.toLowerCase();
         
-        // Use advanced product classification
+        // Get the parsed GPC description - use this for more accurate categorization
+        const gpcDescription = parsedGPC.description ? parsedGPC.description.toLowerCase() : '';
+        
+        // Use advanced product classification with enhanced GPC data
         const productClassification = classifyProductType(
           product.productnameenglish,
           product.BrandName,
-          product.gpc
+          gpcDescription || product.gpc // Prefer the parsed description
         );
         
         // Store the classification for later use
@@ -874,7 +961,7 @@ exports.getAllProducts = async (req, res) => {
       
       // Return the product with all the verification data
       return {
-        ...product,
+        ...enhancedProduct,
         brandData,       // Include the brand data
         unitData,        // Include the unit data
         gpcData,         // Include the GPC data
