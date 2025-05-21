@@ -335,11 +335,12 @@ function parseGPC(gpcString) {
  * @returns {Object} - Enhanced unit info
  */
 function parseUnit(unitString, unitData) {
-  if (!unitString) return { code: null, name: null, type: null, id: null, status: null, created_at: null, updated_at: null };
+  if (!unitString) return { unit_code: null, unit_name: null, type: null, id: null, status: null, created_at: null, updated_at: null };
   
   const unitCode = unitString.trim();
-  let unitName = unitData && unitData.unit_code ? unitData.unit_code : null;
-  const unitType = inferUnitType({ unit_code: unitCode, unit_name: unitName });
+  console.log(unitString, unitData);
+  
+  let unitName = unitData && unitData.unit_name ? unitData.unit_name : null;
   
   // Derive full unit name if missing
   if (!unitName) {
@@ -505,18 +506,12 @@ function checkGpcUnitCompatibility(gpcString, unitCode, unitType) {
  */
 exports.getAllProducts = async (req, res) => {
   try {
-    console.log('Starting getAllProducts function with query parameters:', req.query);
-    console.log('Database clients status:', { 
-      gtrackDB: typeof gtrackDB, 
-      gtrackDBModels: gtrackDB ? Object.keys(gtrackDB) : 'Client undefined',
-      gs1DB: typeof gs1DB,
-      gs1DBModels: gs1DB ? Object.keys(gs1DB) : 'Client undefined'
-    });
+    
     
     // Check if specific product ID is requested
     const productId = req.query.id;
     const member_id = req.query.member_id;
-    console.log('Search parameters:', { productId, member_id });
+  
     
     let products = [];
     let totalCount = 0;
@@ -614,8 +609,8 @@ exports.getAllProducts = async (req, res) => {
     
     // Fetch units from GS1DB
     let units = [];
-    if (gs1DB && gs1DB.Unit) {
-      units = await safeDbQuery(() => gs1DB.Unit.findMany({
+    if (gs1DB && gs1DB.Units) {
+      units = await safeDbQuery(() => gs1DB.Units.findMany({
         where: {
           unit_code: {
             in: unitCodes
