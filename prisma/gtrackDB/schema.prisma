@@ -1,0 +1,3017 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("GTRACKDB")
+}
+
+model add_assembling {
+  id              Int     @id(map: "PK_add_assembling") @default(autoincrement())
+  user_id         String? @db.NVarChar(Max)
+  GTIN            String? @db.NVarChar(Max)
+  barcode         String? @db.NVarChar(Max)
+  assembling_name String? @db.NVarChar(Max)
+  location        String? @db.NVarChar(Max)
+}
+
+model add_bundling {
+  id            Int     @id(map: "PK_add_bundling") @default(autoincrement())
+  user_id       String? @db.NVarChar(Max)
+  barcode       String? @db.NVarChar(Max)
+  GTIN          String? @db.NVarChar(Max)
+  location      String? @db.NVarChar(Max)
+  bundling_name String? @db.NVarChar(Max)
+}
+
+model approved_vendors {
+  approved_vendor_id  Int     @id(map: "PK__approved__D9CB13B87F85BC83") @default(autoincrement())
+  vendor_id           Int
+  approving_member_id String
+  password            String? @db.NVarChar(255)
+  email               String  @db.VarChar(50)
+  vendors             vendors @relation(fields: [vendor_id], references: [id], onUpdate: NoAction, map: "FK__approved___vendo__719CDDE7")
+}
+
+model assembling {
+  user_id            String?   @db.NVarChar(255)
+  gcpGLNID           String?   @db.NVarChar(255)
+  import_code        String?   @db.NVarChar(255)
+  productnameenglish String?   @db.NVarChar(255)
+  productnamearabic  String?   @db.NVarChar(255)
+  BrandName          String?   @db.NVarChar(255)
+  ProductType        String?   @db.NVarChar(255)
+  Origin             String?   @db.NVarChar(255)
+  PackagingType      String?   @db.NVarChar(255)
+  MnfCode            String?   @db.NVarChar(255)
+  MnfGLN             String?   @db.NVarChar(255)
+  ProvGLN            String?   @db.NVarChar(255)
+  unit               String?   @db.NVarChar(255)
+  size               String?   @db.NVarChar(255)
+  front_image        String?   @db.NVarChar(255)
+  back_image         String?   @db.NVarChar(255)
+  childProduct       String?   @db.NVarChar(255)
+  quantity           String?   @db.NVarChar(255)
+  barcode            String?   @db.NVarChar(255)
+  gpc                String?   @db.NVarChar(255)
+  gpc_code           String?   @db.NVarChar(255)
+  countrySale        String?   @db.NVarChar(255)
+  HSCODES            String?   @db.NVarChar(255)
+  HsDescription      String?   @db.NVarChar(255)
+  gcp_type           String?   @db.NVarChar(255)
+  prod_lang          String?   @db.NVarChar(255)
+  details_page       String?   @db.NVarChar(255)
+  details_page_ar    String?   @db.NVarChar(255)
+  status             String?   @db.NVarChar(255)
+  deleted_at         DateTime? @db.DateTime
+  created_at         DateTime? @db.DateTime
+  updated_at         DateTime? @db.DateTime
+  memberID           String?   @db.NVarChar(255)
+  admin_id           String?   @db.NVarChar(255)
+  save_as            String?   @db.NVarChar(255)
+  gtin_type          String?   @db.NVarChar(255)
+  product_url        String?   @db.NVarChar(255)
+  product_link_url   String?   @db.NVarChar(255)
+  BrandNameAr        String?   @db.NVarChar(255)
+  digitalInfoType    String?   @db.NVarChar(255)
+  readyForGepir      String?   @db.NVarChar(255)
+  gepirPosted        String?   @db.NVarChar(255)
+  image_1            String?   @db.NVarChar(255)
+  image_2            String?   @db.NVarChar(255)
+  image_3            String?   @db.NVarChar(255)
+  gpc_type           String?   @db.NVarChar(255)
+  product_type       String?   @db.NVarChar(255)
+  id                 Int       @id(map: "PK__assembli__3213E83FDCA97262") @default(autoincrement())
+}
+
+model BillOfMaterial {
+  id                 String          @id
+  jobOrderDetailsId  String
+  productId          String
+  productName        String?
+  productDescription String?
+  taskDescription    String?
+  unitOfMeasure      String?
+  quantity           String
+  price              String
+  totalPrice         String
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime
+  binLocation        String
+  quantityPicked     String
+  status             String?         @default("pending")
+  JobOrderDetails    JobOrderDetails @relation(fields: [jobOrderDetailsId], references: [id], onDelete: Cascade)
+}
+
+model BinLocation {
+  id                       String                     @id
+  groupWarehouse           String?                    @db.VarChar(150)
+  zones                    String?                    @db.VarChar(150)
+  binNumber                String?                    @db.VarChar(150)
+  zoneType                 String?                    @db.VarChar(50)
+  binHeight                Decimal?                   @db.Decimal(10, 2)
+  binRow                   Int?
+  binWidth                 Decimal?                   @db.Decimal(10, 2)
+  binTotalSize             Decimal?                   @db.Decimal(10, 2)
+  binType                  String?                    @db.VarChar(150)
+  gln                      String?                    @db.VarChar(150)
+  sgln                     String?                    @db.VarChar(150)
+  zoned                    String?                    @db.VarChar(150)
+  zoneCode                 String?                    @db.VarChar(150)
+  zoneName                 String?                    @db.VarChar(150)
+  minimum                  Decimal?                   @db.Decimal(10, 2)
+  maximum                  Decimal?                   @db.Decimal(10, 2)
+  availableQty             Decimal?                   @db.Decimal(10, 2)
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime
+  memberId                 String                     @db.VarChar(255)
+  latitude                 String?                    @db.VarChar(50)
+  longitude                String?                    @db.VarChar(50)
+  ContainerPackagingMaster ContainerPackagingMaster[]
+  GTINPackagingMaster      GTINPackagingMaster[]
+  JobOrderDetails          JobOrderDetails[]
+  PackagingMaster          PackagingMaster[]
+  PackagingPickActivity    PackagingPickActivity[]
+  PalletPackagingMaster    PalletPackagingMaster[]
+  SalesInvoiceMaster       SalesInvoiceMaster[]
+  SSCCPackagingDetail      SSCCPackagingDetail[]
+  SSCCPackagingMaster      SSCCPackagingMaster[]
+  WIP_Item                 WIP_Item[]
+}
+
+model brands {
+  id                String   @id
+  name              String   @db.NVarChar(255)
+  name_ar           String   @db.NVarChar(255)
+  status            String   @default("inactive") @db.NVarChar(255)
+  member_id         String
+  created_at        DateTime @default(now())
+  updated_at        DateTime
+  companyID         String?
+  brand_certificate String?  @db.NVarChar(Max)
+  country_of_sale   String?  @db.NVarChar(Max)
+  country_of_origin String?  @db.NVarChar(Max)
+  Member            Member   @relation(fields: [member_id], references: [id])
+}
+
+model bundling {
+  id                 Int       @id(map: "PK_bundling") @default(autoincrement())
+  user_id            String?   @db.VarChar(Max)
+  gcpGLNID           String?   @db.VarChar(Max)
+  import_code        String?   @db.VarChar(Max)
+  productnameenglish String?   @db.VarChar(Max)
+  productnamearabic  String?   @db.VarChar(Max)
+  BrandName          String?   @db.VarChar(Max)
+  ProductType        String?   @db.VarChar(Max)
+  Origin             String?   @db.VarChar(Max)
+  PackagingType      String?   @db.VarChar(Max)
+  MnfCode            String?   @db.VarChar(Max)
+  MnfGLN             String?   @db.VarChar(Max)
+  ProvGLN            String?   @db.VarChar(Max)
+  unit               String?   @db.VarChar(Max)
+  size               String?   @db.VarChar(Max)
+  front_image        String?   @db.VarChar(Max)
+  back_image         String?   @db.VarChar(Max)
+  childProduct       String?   @db.VarChar(Max)
+  quantity           String?   @db.VarChar(Max)
+  barcode            String?   @db.VarChar(Max)
+  gpc                String?   @db.VarChar(Max)
+  gpc_code           String?   @db.VarChar(Max)
+  countrySale        String?   @db.VarChar(Max)
+  HSCODES            String?   @db.VarChar(Max)
+  HsDescription      String?   @db.VarChar(Max)
+  gcp_type           String?   @db.VarChar(Max)
+  prod_lang          String?   @db.VarChar(Max)
+  details_page       String?   @db.VarChar(Max)
+  details_page_ar    String?   @db.VarChar(Max)
+  status             Int?
+  deleted_at         DateTime?
+  created_at         DateTime?
+  updated_at         DateTime?
+  memberID           String?   @db.VarChar(Max)
+  admin_id           String?   @db.VarChar(Max)
+  save_as            String?   @db.VarChar(Max)
+  gtin_type          String?   @db.VarChar(Max)
+  product_url        String?   @db.VarChar(Max)
+  product_link_url   String?   @db.VarChar(Max)
+  BrandNameAr        String?   @db.VarChar(Max)
+  digitalInfoType    String?   @db.VarChar(Max)
+  readyForGepir      String?   @db.VarChar(Max)
+  gepirPosted        String?   @db.VarChar(Max)
+  image_1            String?   @db.VarChar(Max)
+  image_2            String?   @db.VarChar(Max)
+  image_3            String?   @db.VarChar(Max)
+  gpc_type           String?   @db.VarChar(Max)
+  product_type       String?   @db.VarChar(Max)
+  GLN                String?   @db.VarChar(Max)
+}
+
+model Cities {
+  id         Int       @id(map: "PK_Cities") @default(autoincrement())
+  name       String?   @db.NVarChar(Max)
+  name_ar    String?   @db.NVarChar(Max)
+  name_nl    String?   @db.NVarChar(Max)
+  state_id   Decimal?  @db.Decimal(18, 0)
+  created_at DateTime?
+  updated_at DateTime?
+}
+
+model ContainerPackagingMaster {
+  id                    String                  @id
+  SSCCNo                String                  @unique
+  containerCode         String?
+  description           String?
+  memberId              String
+  binLocationId         String?
+  status                String                  @default("active")
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime?
+  BinLocation           BinLocation?            @relation(fields: [binLocationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  Member                Member                  @relation(fields: [memberId], references: [id], onUpdate: NoAction)
+  GTINPackagingMaster   GTINPackagingMaster[]
+  PalletPackagingMaster PalletPackagingMaster[]
+  SSCCPackagingMaster   SSCCPackagingMaster[]
+}
+
+model Content {
+  id         String   @id
+  section_id String
+  type       String   @db.NVarChar(Max)
+  data       String   @db.NVarChar(Max)
+  created_at DateTime @default(now()) @db.DateTime
+  updated_at DateTime @default(now()) @db.DateTime
+  data_ar    String?  @db.NVarChar(Max)
+  data_nl    String?  @db.NVarChar(Max)
+  Section    Section  @relation(fields: [section_id], references: [id], onDelete: Cascade)
+}
+
+model Country {
+  id                Int       @id(map: "PK_Country") @default(autoincrement())
+  name_en           String?   @db.NVarChar(Max)
+  name_ar           String?   @db.NVarChar(Max)
+  name_nl           String?   @db.NVarChar(Max)
+  country_code      String?   @db.NVarChar(Max)
+  country_shortName String?   @db.NVarChar(Max)
+  status            Decimal?  @db.Decimal(18, 0)
+  created_at        DateTime?
+  updated_at        DateTime?
+}
+
+model Country_of_Sales {
+  id                    Decimal   @id(map: "PK_Country_of_Sales") @db.Decimal(18, 0)
+  Alpha2                String?   @db.NVarChar(Max)
+  Alpha3                String?   @db.NVarChar(Max)
+  country_code_numeric3 String?   @db.NVarChar(Max)
+  country_name          String?   @db.NVarChar(Max)
+  created_at            DateTime?
+  updated_at            DateTime?
+}
+
+model Customer {
+  id                 String               @id
+  customerId         String?
+  email              String?
+  password           String?
+  stackholderType    String?
+  gs1CompanyPrefix   String?
+  companyNameEnglish String?
+  companyNameArabic  String?
+  contactPerson      String?
+  companyLandline    String?
+  mobileNo           String?
+  extension          String?
+  zipCode            String?
+  website            String?
+  gln                String?
+  address            String?
+  longitude          String?
+  latitude           String?
+  status             String?
+  logo               String?
+  memberId           String
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime
+  Member             Member               @relation(fields: [memberId], references: [id], onUpdate: NoAction)
+  JobOrderMaster     JobOrderMaster[]
+  SalesInvoiceMaster SalesInvoiceMaster[]
+}
+
+model Documents {
+  id         Decimal   @id(map: "PK_Documents") @db.Decimal(18, 0)
+  file_name  String?   @db.NVarChar(Max)
+  status     String?   @db.NVarChar(Max)
+  created_at DateTime?
+  updated_at DateTime?
+}
+
+model documentTypes {
+  document_type_id Int    @id(map: "PK__document__69F7C2B16A39D600") @default(autoincrement())
+  document_name    String @db.NVarChar(255)
+}
+
+model EPCISEvent {
+  id                  Int      @id @default(autoincrement())
+  eventID             String   @unique
+  type                String
+  action              String
+  bizStep             String
+  disposition         String
+  eventTime           DateTime
+  eventTimeZoneOffset String
+  epcList             String?
+  readPoint           String?
+  bizLocation         String?
+  bizTransactionList  String?
+  sourceList          String?
+  destinationList     String?
+  errorDeclaration    String?
+  certificationInfo   String?
+  sensorElementList   String?
+  parentID            String?
+  childEPCs           String?
+  childQuantityList   String?
+  inputEPCList        String?
+  inputQuantityList   String?
+  outputEPCList       String?
+  outputQuantityList  String?
+  transformationID    String?
+  quantityList        String?
+  ilmd                String?
+  creationDate        DateTime @default(now())
+  updatedAt           DateTime
+  gs1CompanyPrefix    String?
+  longitude           String?
+  latitude            String?
+}
+
+model EquipmentUsage {
+  id                                    String                                @id
+  productionLine                        String?
+  createdAt                             DateTime                              @default(now())
+  updatedAt                             DateTime
+  TblAssetMasterEncodeAssetCaptureID    Int
+  processName                           String?
+  salesInvoiceDetailsId                 String
+  salesInvoiceNumber                    String
+  SalesInvoiceDetails                   SalesInvoiceDetails                   @relation(fields: [salesInvoiceDetailsId], references: [id], onUpdate: NoAction)
+  TblAssetMasterEncodeAssetCaptureFinal TblAssetMasterEncodeAssetCaptureFinal @relation(fields: [TblAssetMasterEncodeAssetCaptureID], references: [TblAssetMasterEncodeAssetCaptureID])
+}
+
+model erp_credentials {
+  id              Int       @id(map: "PK__erp_cred__3213E83FECF0C16A") @default(autoincrement())
+  member_id       String
+  erp_type        String    @db.VarChar(50)
+  credential_data String    @db.NVarChar(Max)
+  created_at      DateTime? @default(now(), map: "DF__erp_crede__creat__51300E55") @db.DateTime
+  updated_at      DateTime? @default(now(), map: "DF__erp_crede__updat__5224328E") @db.DateTime
+}
+
+model EventStationMainProcess {
+  id                      String                   @id
+  name                    String
+  description             String
+  output                  String
+  sectorIndustryProcessId String
+  createdAt               DateTime?                @default(now())
+  memberId                String?
+  updatedAt               DateTime?
+  SupplyChainTrxType      String?
+  Member                  Member?                  @relation(fields: [memberId], references: [id])
+  SectorIndustryProcess   SectorIndustryProcess    @relation(fields: [sectorIndustryProcessId], references: [id])
+  EventStationSubProcess  EventStationSubProcess[]
+}
+
+model EventStations {
+  id                               String                             @id
+  eventStationName                 String
+  eventStationSubProcessId         String
+  created_by                       String
+  created_at                       DateTime?                          @default(now())
+  updated_at                       DateTime?
+  Member                           Member                             @relation(fields: [created_by], references: [id], onUpdate: NoAction)
+  EventStationSubProcess           EventStationSubProcess             @relation(fields: [eventStationSubProcessId], references: [id])
+  tblStationAttributesInUsedMaster tblStationAttributesInUsedMaster[]
+}
+
+model EventStationSubProcess {
+  id                        String                  @id
+  name                      String
+  description               String
+  eventStationMainProcessId String
+  createdAt                 DateTime?               @default(now())
+  updatedAt                 DateTime?
+  EventStations             EventStations[]
+  EventStationMainProcess   EventStationMainProcess @relation(fields: [eventStationMainProcessId], references: [id])
+}
+
+model ExpectedGoodsReceiptDetails {
+  id                             String                           @id
+  expectedGoodsReceiptId         String
+  productId                      String
+  productName                    String?
+  unitOfMeasure                  String?
+  quantity                       Int
+  receivedQuantity               Int
+  itemType                       String
+  barcode                        String
+  status                         String                           @default("pending")
+  createdAt                      DateTime                         @default(now())
+  updatedAt                      DateTime
+  palletNumber                   String
+  netWeight                      String?
+  expiryDate                     DateTime?
+  ExpectedGoodsReceiptMaster     ExpectedGoodsReceiptMaster       @relation(fields: [expectedGoodsReceiptId], references: [id])
+  ExpectedGoodsReceiptSubdetails ExpectedGoodsReceiptSubdetails[]
+}
+
+model ExpectedGoodsReceiptMaster {
+  id                          String                        @id
+  purchaseOrderNumber         String
+  sourceGLN                   String
+  destinationGLN              String
+  shipmentDate                DateTime
+  expectedDelivery            DateTime
+  asnNumber                   String?
+  status                      String                        @default("pending")
+  createdAt                   DateTime                      @default(now())
+  updatedAt                   DateTime
+  memberId                    String?
+  ExpectedGoodsReceiptDetails ExpectedGoodsReceiptDetails[]
+  Member                      Member?                       @relation(fields: [memberId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model ExpectedGoodsReceiptSubdetails {
+  id                           String                      @id
+  expectedGoodsReceiptDetailId String
+  itemType                     String
+  batchNumber                  String?
+  expiryDate                   DateTime?
+  serialNumber                 String?
+  createdAt                    DateTime                    @default(now())
+  updatedAt                    DateTime
+  ExpectedGoodsReceiptDetails  ExpectedGoodsReceiptDetails @relation(fields: [expectedGoodsReceiptDetailId], references: [id])
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model expectedTransferOrder {
+  TRANSFERID           String?   @db.NVarChar(Max)
+  TRANSFERSTATUS       Float?
+  INVENTLOCATIONIDFROM String?   @db.NVarChar(Max)
+  INVENTLOCATIONIDTO   String?   @db.NVarChar(Max)
+  ITEMID               String?   @db.NVarChar(Max)
+  QTYTRANSFER          Float?
+  QTYRECEIVED          Float?
+  CREATEDDATETIME      DateTime? @db.DateTime
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model featured_services {
+  id             String?   @db.NVarChar(Max)
+  name_en        String?   @db.NVarChar(Max)
+  name_ar        String?   @db.NVarChar(Max)
+  image          String?   @db.NVarChar(Max)
+  link           String?   @db.NVarChar(Max)
+  status         Int?
+  description    String?   @db.NVarChar(Max)
+  description_ar String?   @db.NVarChar(Max)
+  created_at     DateTime? @db.DateTime
+  updated_at     DateTime? @db.DateTime
+  description_nl String?   @db.NVarChar(Max)
+  name_nl        String?   @db.NVarChar(Max)
+
+  @@ignore
+}
+
+model FinishedGoods {
+  id                 String         @id
+  jobOrderId         String
+  wipItemId          String
+  productId          String
+  productName        String?
+  productDescription String?
+  unitOfMeasure      String?
+  quantity           String
+  price              String
+  totalPrice         String
+  completionDate     DateTime       @default(now())
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime
+  status             String         @default("Finished")
+  JobOrderMaster     JobOrderMaster @relation(fields: [jobOrderId], references: [id], onDelete: Cascade)
+  WIP_Item           WIP_Item       @relation(fields: [wipItemId], references: [id], onUpdate: NoAction)
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model footer_menus {
+  id               String?   @db.NVarChar(Max)
+  parent_id        String?   @db.NVarChar(Max)
+  category_name_en String?   @db.NVarChar(Max)
+  category_name_ar String?   @db.NVarChar(Max)
+  url              String?   @db.NVarChar(Max)
+  status           Int?
+  created_at       DateTime? @db.DateTime
+  updated_at       DateTime? @db.DateTime
+  image            String?   @db.NVarChar(Max)
+  caption          String?   @db.NVarChar(Max)
+  caption_ar       String?   @db.NVarChar(Max)
+
+  @@ignore
+}
+
+model GDTIDocument {
+  id           Int      @id @default(autoincrement())
+  gdtiNumber   String   @unique
+  documentType String
+  pdfPath      String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime
+  memberId     String
+  Member       Member   @relation(fields: [memberId], references: [id])
+}
+
+model giaiCategories {
+  id                   String               @id
+  mainCategoryCode     String?
+  subCategoryCode      String?
+  mainDescription      String?
+  subDescription       String?
+  seriesNumber         String?
+  createdAt            DateTime?            @default(now())
+  updatedAt            DateTime?
+  mainSubSeriesCounter Int?
+  memberId             String?
+  Member               Member?              @relation(fields: [memberId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  giaiCategoryBrands   giaiCategoryBrands[]
+}
+
+model giaiCategoryBrands {
+  id             String         @id
+  name           String?
+  mainCode       String?
+  majorCode      String?
+  giaiCategoryId String
+  createdAt      DateTime?      @default(now())
+  updatedAt      DateTime?
+  giaiCategories giaiCategories @relation(fields: [giaiCategoryId], references: [id])
+}
+
+model GRNGoodsReceipt {
+  id                     String                 @id
+  grnPurchaseOrderId     String
+  receiptDate            DateTime               @default(now())
+  receivedBy             String
+  remarks                String?
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime
+  grnPurchaseOrderItemId String
+  productDescription     String?
+  productId              String
+  productName            String?
+  quantityReceived       Int
+  quantityRejected       Int?
+  unitOfMeasure          String?
+  batchNumber            String?
+  expiryDate             DateTime?
+  manufactureDate        DateTime?
+  netWeight              String?
+  putAwayLocation        String?
+  transportGLN           String?
+  GRNPurchaseOrderMaster GRNPurchaseOrderMaster @relation(fields: [grnPurchaseOrderId], references: [id], onDelete: Cascade)
+  GRNPurchaseOrderItem   GRNPurchaseOrderItem   @relation(fields: [grnPurchaseOrderItemId], references: [id], onUpdate: NoAction)
+}
+
+model GRNPurchaseOrderItem {
+  id                     String                 @id
+  grnPurchaseOrderId     String
+  productId              String
+  quantityOrdered        String
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime
+  price                  String
+  productDescription     String?
+  productName            String?
+  quantityReceived       Int                    @default(0)
+  totalPrice             String
+  unitOfMeasure          String?
+  GRNGoodsReceipt        GRNGoodsReceipt[]
+  GRNPurchaseOrderMaster GRNPurchaseOrderMaster @relation(fields: [grnPurchaseOrderId], references: [id])
+
+  @@unique([productId, grnPurchaseOrderId], map: "UQ_ProductID_GRNPOID")
+}
+
+model GRNPurchaseOrderMaster {
+  id                   String                 @id
+  orderDate            DateTime               @default(now())
+  status               String
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime
+  deliveryDate         DateTime
+  gdti                 String?
+  member_id            String
+  popath               String?
+  purchaseOrderNumber  String                 @unique
+  supplier_id          String
+  totalAmount          String
+  GRNGoodsReceipt      GRNGoodsReceipt[]
+  GRNPurchaseOrderItem GRNPurchaseOrderItem[]
+}
+
+model GTINPackagingDetail {
+  id                  String              @id
+  masterPackagingId   String
+  serialGTIN          String              @db.VarChar(50)
+  serialNo            String              @db.VarChar(100)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime?
+  GTINPackagingMaster GTINPackagingMaster @relation(fields: [masterPackagingId], references: [id], onDelete: Cascade)
+}
+
+model GTINPackagingMaster {
+  id                       String                    @id
+  GTIN                     String                    @db.VarChar(50)
+  packagingType            String                    @db.VarChar(50)
+  description              String?
+  memberId                 String
+  binLocationId            String?
+  status                   String                    @default("active")
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime?
+  cartonDetailId           String?
+  palletId                 String?
+  containerId              String?
+  GTINPackagingDetail      GTINPackagingDetail[]
+  BinLocation              BinLocation?              @relation(fields: [binLocationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  SSCCPackagingDetail      SSCCPackagingDetail?      @relation(fields: [cartonDetailId], references: [id])
+  ContainerPackagingMaster ContainerPackagingMaster? @relation(fields: [containerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  Member                   Member                    @relation(fields: [memberId], references: [id], onUpdate: NoAction)
+  PalletPackagingMaster    PalletPackagingMaster?    @relation(fields: [palletId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model Hs_Code {
+  id            Decimal   @id(map: "PK_Hs_Code") @db.Decimal(18, 0)
+  CNKEY         String?   @db.NVarChar(Max)
+  HSCODES       String?   @db.NVarChar(Max)
+  DescriptionEN String?   @db.NVarChar(Max)
+  addBy         Int?
+  created_at    DateTime?
+  updated_at    DateTime?
+}
+
+model Invitation {
+  id                                  String    @id
+  inviterId                           String
+  inviteeId                           String?
+  status                              String    @default("PENDING")
+  token                               String?
+  acceptedAt                          DateTime?
+  rejectedAt                          DateTime?
+  createdAt                           DateTime  @default(now())
+  updatedAt                           DateTime
+  Member_Invitation_inviteeIdToMember Member?   @relation("Invitation_inviteeIdToMember", fields: [inviteeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  Member_Invitation_inviterIdToMember Member    @relation("Invitation_inviterIdToMember", fields: [inviterId], references: [id], onDelete: Cascade)
+}
+
+model invitation_tokens {
+  id                   Int      @id(map: "PK__invitati__3213E83F789A83F3") @default(autoincrement())
+  email                String   @db.VarChar(255)
+  token                String   @db.NVarChar(255)
+  expiration_timestamp DateTime @db.DateTime
+}
+
+model JobOrderDetails {
+  id                 String           @id
+  jobOrderId         String
+  productId          String
+  productName        String?
+  productDescription String?
+  unitOfMeasure      String?
+  quantity           String
+  price              String
+  totalPrice         String
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime
+  subUserId          String?
+  status             String?          @default("pending")
+  binLocationId      String?
+  BillOfMaterial     BillOfMaterial[]
+  BinLocation        BinLocation?     @relation(fields: [binLocationId], references: [id], onDelete: Cascade)
+  JobOrderMaster     JobOrderMaster   @relation(fields: [jobOrderId], references: [id], onDelete: Cascade)
+  MemberSubUsers     MemberSubUsers?  @relation(fields: [subUserId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  WIP_Item           WIP_Item[]
+}
+
+model JobOrderMaster {
+  id                  String            @id
+  jobOrderNumber      String            @unique
+  customerId          String
+  jobStartDate        DateTime?         @default(now())
+  jobEndDate          DateTime?
+  orderDate           DateTime          @default(now())
+  deliveryDate        DateTime
+  totalCost           String
+  status              String
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime
+  memberId            String
+  jobDescription      String?
+  remarks             String?
+  purchaseOrderNumber String?
+  FinishedGoods       FinishedGoods[]
+  JobOrderDetails     JobOrderDetails[]
+  Customer            Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  Member              Member            @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  WIP_Item            WIP_Item[]
+}
+
+model languages {
+  id    Int     @id(map: "PK_languages") @default(autoincrement())
+  key   String? @db.NVarChar(Max)
+  value String? @db.NVarChar(Max)
+  nl    String? @db.NVarChar(Max)
+}
+
+model LocationData {
+  ID           Int      @id(map: "PK__Location__3214EC278F05F241") @default(autoincrement())
+  Latitude     Decimal? @db.Decimal(9, 6)
+  Longitude    Decimal? @db.Decimal(9, 6)
+  Name         String?  @db.VarChar(50)
+  LocationName String?  @db.VarChar(50)
+  Serial       String?  @db.VarChar(50)
+  Description  String?  @db.VarChar(100)
+  Type         String?  @db.VarChar(50)
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model mega_menu_categories {
+  id               String    @db.NVarChar(Max)
+  parent_id        String?   @db.NVarChar(Max)
+  megamenu_id      String?   @db.NVarChar(Max)
+  category_name_en String?   @db.NVarChar(Max)
+  category_name_ar String?   @db.NVarChar(Max)
+  description      String?   @db.NVarChar(Max)
+  url              String?   @db.NVarChar(Max)
+  meta_title       String?   @db.NVarChar(Max)
+  meta_description String?   @db.NVarChar(Max)
+  meta_keywords    String?   @db.NVarChar(Max)
+  status           Int?
+  created_at       DateTime? @db.DateTime
+  updated_at       DateTime? @db.DateTime
+  image            String?   @db.NVarChar(Max)
+  caption          String?   @db.NVarChar(Max)
+  caption_ar       String?   @db.NVarChar(Max)
+  caption_nl       String?   @db.NVarChar(Max)
+  category_name_nl String?   @db.NVarChar(Max)
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model mega_menus {
+  id         String    @db.NVarChar(Max)
+  name_en    String?   @db.NVarChar(Max)
+  name_ar    String?   @db.NVarChar(Max)
+  status     Int?
+  created_at DateTime? @db.DateTime
+  updated_at DateTime? @db.DateTime
+  name_nl    String?   @db.NVarChar(Max)
+
+  @@ignore
+}
+
+model Member {
+  id                                                          String                                  @id
+  email                                                       String                                  @unique
+  password                                                    String?
+  stackholderType                                             String
+  gs1CompanyPrefix                                            String?
+  companyNameEnglish                                          String?
+  companyNameArabic                                           String?
+  contactPerson                                               String?
+  companyLandline                                             String?
+  mobileNo                                                    String?
+  extension                                                   String?
+  zipCode                                                     String?
+  website                                                     String?
+  status                                                      String                                  @default("pending")
+  createdAt                                                   DateTime                                @default(now())
+  updatedAt                                                   DateTime
+  address                                                     String?
+  gln                                                         String?
+  latitude                                                    String?
+  longitude                                                   String?
+  customerId                                                  String?                                 @db.VarChar(20)
+  counter                                                     Int                                     @default(0)
+  brands                                                      brands[]
+  ContainerPackagingMaster                                    ContainerPackagingMaster[]
+  Customer                                                    Customer[]
+  EventStationMainProcess                                     EventStationMainProcess[]
+  EventStations                                               EventStations[]
+  ExpectedGoodsReceiptMaster                                  ExpectedGoodsReceiptMaster[]
+  GDTIDocument                                                GDTIDocument[]
+  giaiCategories                                              giaiCategories[]
+  GTINPackagingMaster                                         GTINPackagingMaster[]
+  Invitation_Invitation_inviteeIdToMember                     Invitation[]                            @relation("Invitation_inviteeIdToMember")
+  Invitation_Invitation_inviterIdToMember                     Invitation[]                            @relation("Invitation_inviterIdToMember")
+  JobOrderMaster                                              JobOrderMaster[]
+  MemberSubUsers                                              MemberSubUsers[]
+  PackagingMaster                                             PackagingMaster[]
+  PalletPackagingMaster                                       PalletPackagingMaster[]
+  PickListMaster                                              PickListMaster[]
+  product_recall                                              product_recall[]
+  products                                                    products[]
+  PurchaseOrderMaster_PurchaseOrderMaster_member_idToMember   PurchaseOrderMaster[]                   @relation("PurchaseOrderMaster_member_idToMember")
+  PurchaseOrderMaster_PurchaseOrderMaster_supplier_idToMember PurchaseOrderMaster[]                   @relation("PurchaseOrderMaster_supplier_idToMember")
+  SalesInvoiceMaster                                          SalesInvoiceMaster[]
+  SalesInvoicePickListMaster                                  SalesInvoicePickListMaster[]
+  skipped_barcodes                                            skipped_barcodes[]
+  SSCCPackagingMaster                                         SSCCPackagingMaster[]
+  TblAssetMasterEncodeAssetCapture                            TblAssetMasterEncodeAssetCapture[]
+  TblAssetMasterEncodeAssetCaptureFinal                       TblAssetMasterEncodeAssetCaptureFinal[]
+  tblGTINQrCodeMasterDLinks                                   tblGTINQrCodeMasterDLinks[]
+  tblStationAttributesHistory                                 tblStationAttributesHistory[]
+  VehicleMaster                                               VehicleMaster[]
+}
+
+model MemberSubUsers {
+  id                                    String                                  @id
+  member_id                             String
+  email                                 String                                  @unique @db.NVarChar(255)
+  password                              String                                  @db.NVarChar(255)
+  role                                  String                                  @db.NVarChar(50)
+  is_active                             Boolean?                                @default(true)
+  createdAt                             DateTime                                @default(now())
+  updatedAt                             DateTime
+  userName                              String
+  isNFCEnabled                          Boolean?                                @default(false)
+  nfcNumber                             String?
+  nfcSearchToken                        String?
+  JobOrderDetails                       JobOrderDetails[]
+  Member                                Member                                  @relation(fields: [member_id], references: [id], onDelete: Cascade)
+  PickListMaster                        PickListMaster[]
+  SalesInvoiceMaster                    SalesInvoiceMaster[]
+  SalesInvoicePickListMaster            SalesInvoicePickListMaster[]
+  TblAssetMasterEncodeAssetCaptureFinal TblAssetMasterEncodeAssetCaptureFinal[]
+  VehicleMaster                         VehicleMaster[]
+}
+
+model NewPage {
+  id                 String    @id
+  name               String?   @db.NVarChar(Max)
+  name_ar            String?   @db.NVarChar(Max)
+  slug               String?   @unique
+  seo_description    String?   @db.NVarChar(Max)
+  seo_description_ar String?   @db.NVarChar(Max)
+  status             Int?
+  template_id        String
+  created_at         DateTime? @default(now()) @db.DateTime
+  updated_at         DateTime? @default(now()) @db.DateTime
+  name_nl            String?   @db.NVarChar(Max)
+  seo_description_nl String?   @db.NVarChar(Max)
+  Template           Template  @relation(fields: [template_id], references: [id], onDelete: Cascade)
+  Section            Section[]
+}
+
+model PackagingDetail {
+  id                 String               @id
+  PackagingMasterId  String
+  SSCCNo             String
+  PalletCode         String?
+  PO                 String?
+  BinLocation        String?
+  CreatedAt          DateTime             @default(now())
+  updatedAt          DateTime?
+  PackagingMaster    PackagingMaster      @relation(fields: [PackagingMasterId], references: [id], onDelete: Cascade)
+  PackagingSubDetail PackagingSubDetail[]
+}
+
+model PackagingMaster {
+  id              String            @id
+  SSCCNo          String            @unique
+  TotalPallet     Int
+  MemberId        String
+  TransactionDate DateTime          @default(now())
+  CreatedAt       DateTime          @default(now())
+  type            String?
+  updatedAt       DateTime?
+  binLocationId   String?
+  PackagingDetail PackagingDetail[]
+  BinLocation     BinLocation?      @relation(fields: [binLocationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  Member          Member            @relation(fields: [MemberId], references: [id])
+}
+
+model PackagingPickActivity {
+  id             String       @id
+  contextType    String
+  contextId      String
+  serialGTIN     String
+  serialNo       String
+  pickedQuantity String
+  binLocationId  String?
+  pickedAt       DateTime     @default(now())
+  pickedBy       String
+  status         String       @default("picked")
+  BinLocation    BinLocation? @relation(fields: [binLocationId], references: [id], onDelete: NoAction)
+}
+
+model PackagingSubDetail {
+  id                String          @id
+  PackagingDetailId String
+  ItemCode          String
+  ItemDesc          String?
+  GTIN              String?
+  ItemSerialNo      String?
+  BinLocation       String?
+  Length            Decimal?        @db.Decimal(10, 2)
+  Width             Decimal?        @db.Decimal(10, 2)
+  Height            Decimal?        @db.Decimal(10, 2)
+  Weight            Decimal?        @db.Decimal(10, 2)
+  QrCode            String?
+  CreatedAt         DateTime        @default(now())
+  PackagingDetail   PackagingDetail @relation(fields: [PackagingDetailId], references: [id], onDelete: Cascade)
+}
+
+model packeditems {
+  id                Int       @id(map: "PK_packeditems") @default(autoincrement())
+  GTIN              String?   @db.VarChar(Max)
+  BATCH             String?   @db.VarChar(Max)
+  ManufacturingDate DateTime? @db.Date
+  User_id           String?   @db.NVarChar(Max)
+  Quantity          Int?
+  GLN               String?   @db.VarChar(Max)
+  NetWeight         Decimal?  @db.Decimal(18, 1)
+  UnitOfMeasure     String?   @db.VarChar(Max)
+  ExpiryDate        DateTime? @db.Date
+  Timestamp         DateTime?
+  ItemImage         String?   @db.VarChar(Max)
+  ItemName          String?   @db.VarChar(Max)
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model packingsliptable_CL {
+  SALESID                String?   @db.NVarChar(20)
+  ITEMID                 String?   @db.NVarChar(20)
+  NAME                   String?
+  INVENTLOCATIONID       String?   @db.NVarChar(20)
+  CONFIGID               String?   @db.NVarChar(10)
+  ORDERED                Decimal   @db.Decimal(28, 12)
+  PACKINGSLIPID          String    @db.NVarChar(20)
+  VEHICLESHIPPLATENUMBER String?   @db.NVarChar(7)
+  DATETIMECREATED        DateTime? @db.DateTime
+  ASSIGNEDUSERID         String?   @db.NVarChar(20)
+  ITEMSERIALNO           String?   @db.VarChar(200)
+  DISPATCH               String?   @default("no", map: "DF__packingsl__DISPA__1332DBDC") @db.VarChar(10)
+
+  @@ignore
+}
+
+model PalletPackagingMaster {
+  id                       String                    @id
+  SSCCNo                   String                    @unique
+  description              String?
+  memberId                 String
+  binLocationId            String?
+  status                   String                    @default("active")
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime?
+  containerId              String?
+  GTINPackagingMaster      GTINPackagingMaster[]
+  BinLocation              BinLocation?              @relation(fields: [binLocationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ContainerPackagingMaster ContainerPackagingMaster? @relation(fields: [containerId], references: [id])
+  Member                   Member                    @relation(fields: [memberId], references: [id], onUpdate: NoAction)
+  SSCCPackagingMaster      SSCCPackagingMaster[]
+}
+
+model PickListDetails {
+  id                 String               @id
+  pickListId         String
+  productId          String
+  productName        String?
+  productDescription String?
+  taskDescription    String?
+  unitOfMeasure      String?
+  quantity           String
+  quantityPicked     String
+  price              String
+  totalPrice         String
+  binLocation        String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime
+  status             String?              @default("pending")
+  PickListMaster     PickListMaster       @relation(fields: [pickListId], references: [id], onDelete: Cascade)
+  SubPickListDetails SubPickListDetails[]
+  tblPickListHistory tblPickListHistory[]
+}
+
+model PickListMaster {
+  id              String            @id
+  pickListNumber  String
+  jobOrderNumber  String
+  member_id       String
+  subUser_id      String
+  pickDate        DateTime          @default(now())
+  status          String            @default("pending")
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime
+  customerId      String
+  PickListDetails PickListDetails[]
+  Member          Member            @relation(fields: [member_id], references: [id], onDelete: Cascade)
+  MemberSubUsers  MemberSubUsers    @relation(fields: [subUser_id], references: [id], onUpdate: NoAction)
+}
+
+model Product_Packaging {
+  id         Decimal   @id(map: "PK_Product_Packaging") @db.Decimal(18, 0)
+  name       String?   @db.NVarChar(Max)
+  status     Decimal?  @db.Decimal(18, 0)
+  created_at DateTime?
+  updated_at DateTime?
+}
+
+model product_recall {
+  id                     String                   @id
+  transactionId          String                   @unique
+  barcode                String
+  GLN                    String?
+  batchNo                String?
+  expiryDate             DateTime?
+  reason                 String?
+  status                 String                   @default("active") @db.VarChar(50)
+  memberId               String
+  created_at             DateTime                 @default(now())
+  updated_at             DateTime
+  dateOfRecall           DateTime?
+  description            String?
+  pdfPath                String?
+  gdtiNumber             String?
+  Member                 Member                   @relation(fields: [memberId], references: [id])
+  product_recall_serials product_recall_serials[]
+
+  @@index([barcode])
+  @@index([memberId])
+}
+
+model product_recall_serials {
+  id                String         @id
+  recallId          String
+  barcode           String
+  serialNo          String
+  batchNo           String?
+  expiryDate        DateTime?
+  manufacturingDate DateTime?
+  stakeholder       String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime
+  product_recall    product_recall @relation(fields: [recallId], references: [id], onDelete: Cascade)
+}
+
+model products {
+  id                 String    @id
+  member_id          String
+  gcpGLNID           String    @db.VarChar(50)
+  import_code        String?   @db.VarChar(50)
+  productnameenglish String?   @db.NVarChar(Max)
+  productnamearabic  String    @db.NVarChar(Max)
+  BrandName          String?   @db.NVarChar(255)
+  ProductType        String?   @db.VarChar(50)
+  Origin             String?   @db.VarChar(50)
+  PackagingType      String?   @db.VarChar(50)
+  MnfCode            String?   @db.NVarChar(50)
+  MnfGLN             String?   @db.NVarChar(50)
+  ProvGLN            String?   @db.NVarChar(50)
+  unit               String?   @db.VarChar(50)
+  size               String?   @db.VarChar(50)
+  front_image        String?   @db.VarChar(255)
+  back_image         String?   @db.VarChar(255)
+  childProduct       String?   @db.VarChar(255)
+  quantity           String?   @db.NVarChar(10)
+  barcode            String?   @db.NVarChar(50)
+  gpc                String?   @db.VarChar(255)
+  gpc_code           String?   @db.VarChar(50)
+  countrySale        String?   @db.VarChar(50)
+  HSCODES            String?   @db.Text
+  HsDescription      String?   @db.Text
+  gcp_type           String?   @db.VarChar(50)
+  prod_lang          String?   @db.VarChar(50)
+  details_page       String?   @db.NVarChar(Max)
+  details_page_ar    String?   @db.NVarChar(Max)
+  status             Int       @default(1, map: "DF__products__status__54968AE5") @db.TinyInt
+  deleted_at         DateTime? @db.DateTime
+  created_at         DateTime? @default(now()) @db.DateTime
+  updated_at         DateTime  @db.DateTime
+  memberID           String?   @db.NVarChar(Max)
+  admin_id           Int?      @default(0, map: "DF_products_admin_id")
+  save_as            String?   @default("final", map: "DF_products_save_as") @db.VarChar(20)
+  gtin_type          String?   @default("gtin", map: "DF_products_gtin_type") @db.VarChar(4)
+  product_url        String?   @db.VarChar(255)
+  product_link_url   String?   @db.VarChar(255)
+  BrandNameAr        String?   @db.NVarChar(Max)
+  digitalInfoType    Int?
+  readyForGepir      String?   @default("0", map: "DF_products_readyForGepir") @db.NChar(10)
+  gepirPosted        Int?      @default(0, map: "DF_products_gepirPosted") @db.TinyInt
+  image_1            String?   @db.VarChar(255)
+  image_2            String?   @db.VarChar(255)
+  image_3            String?   @db.VarChar(255)
+  gpc_type           String?   @default("custom") @db.VarChar(50)
+  product_type       String?   @default("finished_goods", map: "DF_products_prouduct_type") @db.NVarChar(255)
+  Member             Member    @relation(fields: [member_id], references: [id], onDelete: Cascade)
+
+  @@index([barcode], map: "products_barcode_index")
+}
+
+model PurchaseOrderDetails {
+  id                  String              @id
+  purchaseOrderId     String
+  productId           String
+  quantity            String
+  price               String
+  totalPrice          String
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime
+  productDescription  String?
+  productName         String?
+  unitOfMeasure       String?
+  PurchaseOrderMaster PurchaseOrderMaster @relation(fields: [purchaseOrderId], references: [id])
+}
+
+model PurchaseOrderMaster {
+  id                                             String                 @id
+  purchaseOrderNumber                            String                 @unique
+  orderDate                                      DateTime               @default(now())
+  deliveryDate                                   DateTime
+  totalAmount                                    String
+  status                                         String
+  createdAt                                      DateTime               @default(now())
+  updatedAt                                      DateTime
+  member_id                                      String
+  gdti                                           String?
+  popath                                         String?
+  supplier_id                                    String
+  PurchaseOrderDetails                           PurchaseOrderDetails[]
+  Member_PurchaseOrderMaster_member_idToMember   Member                 @relation("PurchaseOrderMaster_member_idToMember", fields: [member_id], references: [id], onDelete: Cascade)
+  Member_PurchaseOrderMaster_supplier_idToMember Member                 @relation("PurchaseOrderMaster_supplier_idToMember", fields: [supplier_id], references: [id], onUpdate: NoAction)
+}
+
+model RequestForQuotationDetails {
+  id                        String                    @id
+  rfqMasterId               String
+  productId                 String
+  productName               String
+  productDescription        String?
+  unitOfMeasure             String
+  quantity                  String
+  expectedUnitPrice         String?
+  createdAt                 DateTime                  @default(now())
+  updatedAt                 DateTime
+  RequestForQuotationMaster RequestForQuotationMaster @relation(fields: [rfqMasterId], references: [id])
+}
+
+model RequestForQuotationMaster {
+  id                         String                       @id
+  rfqNumber                  String                       @unique
+  requestDate                DateTime                     @default(now())
+  responseDeadline           DateTime
+  status                     String
+  createdAt                  DateTime                     @default(now())
+  updatedAt                  DateTime
+  member_id                  String?
+  RequestForQuotationDetails RequestForQuotationDetails[]
+}
+
+model SalesInvoiceDetails {
+  id                 String             @id
+  salesInvoiceId     String
+  productId          String
+  productName        String?
+  productDescription String?
+  unitOfMeasure      String?
+  quantity           String
+  price              String?
+  totalPrice         String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime
+  quantityPicked     Int?               @default(0)
+  images             String?            @db.NVarChar(Max)
+  vehicleId          String?
+  EquipmentUsage     EquipmentUsage[]
+  SalesInvoiceMaster SalesInvoiceMaster @relation(fields: [salesInvoiceId], references: [id])
+  VehicleMaster      VehicleMaster?     @relation(fields: [vehicleId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model SalesInvoiceMaster {
+  id                  String                @id
+  salesInvoiceNumber  String                @unique
+  customerId          String
+  orderDate           DateTime              @default(now())
+  deliveryDate        DateTime
+  totalAmount         String?
+  status              String                @default("pending")
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime
+  memberId            String
+  arrivalTime         DateTime?
+  assignedTime        DateTime?             @default(now())
+  endJourneyTime      DateTime?
+  invoiceCreationTime DateTime?
+  pickDate            DateTime?
+  purchaseOrderNumber String?
+  startJourneyTime    DateTime?
+  subUser_id          String?
+  unloadingTime       DateTime?
+  signature           String?               @db.NVarChar(Max)
+  binLocationId       String?
+  SalesInvoiceDetails SalesInvoiceDetails[]
+  BinLocation         BinLocation?          @relation(fields: [binLocationId], references: [id], onDelete: Cascade)
+  Customer            Customer              @relation(fields: [customerId], references: [id], onUpdate: NoAction)
+  Member              Member                @relation(fields: [memberId], references: [id], onUpdate: NoAction)
+  MemberSubUsers      MemberSubUsers?       @relation(fields: [subUser_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model SalesInvoicePickListDetails {
+  id                         String                     @id
+  salesInvoicePickListId     String
+  productId                  String
+  productName                String?
+  productDescription         String?
+  unitOfMeasure              String?
+  quantity                   String
+  quantityPicked             String
+  price                      String
+  totalPrice                 String
+  binLocation                String?
+  createdAt                  DateTime                   @default(now())
+  updatedAt                  DateTime
+  vehicleId                  String?
+  SalesInvoicePickListMaster SalesInvoicePickListMaster @relation(fields: [salesInvoicePickListId], references: [id], onDelete: Cascade)
+  VehicleMaster              VehicleMaster?             @relation(fields: [vehicleId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model SalesInvoicePickListMaster {
+  id                          String                        @id
+  salesInvoicePickListNumber  String
+  salesInvoiceNumber          String
+  customerId                  String
+  member_id                   String
+  pickDate                    DateTime                      @default(now())
+  status                      String                        @default("pending")
+  createdAt                   DateTime                      @default(now())
+  updatedAt                   DateTime
+  arrivalTime                 DateTime?
+  assignedTime                DateTime?                     @default(now())
+  endJourneyTime              DateTime?
+  images                      String?                       @db.NVarChar(Max)
+  invoiceCreationTime         DateTime?
+  startJourneyTime            DateTime?
+  unloadingTime               DateTime?
+  signature                   String?
+  subUser_id                  String
+  SalesInvoicePickListDetails SalesInvoicePickListDetails[]
+  Member                      Member                        @relation(fields: [member_id], references: [id], onDelete: Cascade)
+  MemberSubUsers              MemberSubUsers                @relation(fields: [subUser_id], references: [id], onUpdate: NoAction)
+}
+
+model SalesOrderDetails {
+  id                 String           @id
+  salesOrderId       String
+  productId          String
+  productName        String?
+  productDescription String?
+  unitOfMeasure      String?
+  quantity           String
+  price              String
+  totalPrice         String
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime
+  SalesOrderMaster   SalesOrderMaster @relation(fields: [salesOrderId], references: [id])
+}
+
+model SalesOrderMaster {
+  id                String              @id
+  salesOrderNumber  String              @unique
+  customerId        String
+  orderDate         DateTime            @default(now())
+  deliveryDate      DateTime
+  totalAmount       String
+  status            String
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime
+  SalesOrderDetails SalesOrderDetails[]
+}
+
+model Section {
+  id         String    @id
+  page_id    String
+  name       String    @db.NVarChar(Max)
+  name_ar    String    @db.NVarChar(Max)
+  order      Int
+  created_at DateTime  @default(now()) @db.DateTime
+  updated_at DateTime  @default(now()) @db.DateTime
+  Content    Content[]
+  NewPage    NewPage   @relation(fields: [page_id], references: [id], onDelete: Cascade)
+}
+
+model SectorIndustry {
+  id                    String                  @id
+  name                  String
+  createdAt             DateTime?               @default(now())
+  updatedAt             DateTime?
+  SectorIndustryProcess SectorIndustryProcess[]
+}
+
+model SectorIndustryProcess {
+  id                      String                    @id
+  name                    String
+  description             String
+  sectorIndustryId        String
+  createdAt               DateTime?                 @default(now())
+  updatedAt               DateTime?
+  EventStationMainProcess EventStationMainProcess[]
+  SectorIndustry          SectorIndustry            @relation(fields: [sectorIndustryId], references: [id])
+}
+
+model shipment_documents {
+  document_id       BigInt            @id(map: "PK__shipment__9666E8ACBC77390C") @default(autoincrement())
+  document_type     String            @db.VarChar(255)
+  document_url      String            @db.VarChar(255)
+  product_id        BigInt
+  is_verified       Boolean           @default(false, map: "DF__shipment___is_ve__1E6F845E")
+  shipment_products shipment_products @relation(fields: [product_id], references: [id], onUpdate: NoAction, map: "FK__shipment___produ__12FDD1B2")
+
+  @@unique([product_id, document_type], map: "UC_DocumentType_Product")
+  @@index([product_id], map: "idx_document_product")
+}
+
+model shipment_products {
+  id                 BigInt               @id(map: "PK__shipment__3213E83FE8127A02") @default(autoincrement())
+  shipment_id        BigInt
+  productnameenglish String?              @db.VarChar(255)
+  productnamearabic  String               @db.NVarChar(Max)
+  BrandName          String?              @db.NVarChar(255)
+  BrandNameAr        String?              @db.NVarChar(255)
+  unit               String?              @db.NVarChar(50)
+  member_id          String
+  barcode            BigInt
+  front_image        String?              @db.VarChar(Max)
+  back_image         String?              @db.VarChar(Max)
+  is_verified        Boolean?             @default(false, map: "DF__shipment___is_ve__1C873BEC")
+  shipment_documents shipment_documents[]
+  shipment_requests  shipment_requests    @relation(fields: [shipment_id], references: [shipment_id], onUpdate: NoAction, map: "FK__shipment___shipm__10216507")
+
+  @@unique([shipment_id, barcode], map: "UC_Shipment_Barcode")
+  @@index([barcode, member_id], map: "idx_product_barcode_member")
+}
+
+model shipment_requests {
+  shipment_id       BigInt              @id(map: "PK__shipment__41466E59A9110E5F") @default(autoincrement())
+  vendor_id         Int
+  customer_id       String
+  status            String?             @default("created", map: "DF__shipment___statu__17C286CF") @db.VarChar(20)
+  datetime          DateTime?           @db.DateTime
+  shipment_products shipment_products[]
+}
+
+model skipped_barcodes {
+  id         String    @id
+  member_id  String
+  barcode    String    @db.NVarChar(255)
+  deleted_at DateTime? @db.DateTime
+  created_at DateTime  @default(now())
+  updated_at DateTime
+  Member     Member    @relation(fields: [member_id], references: [id], onDelete: Cascade)
+}
+
+model SSCCPackagingDetail {
+  id                  String                @id
+  masterPackagingId   String?
+  serialGTIN          String?               @db.VarChar(50)
+  serialNo            String?               @db.VarChar(100)
+  binLocationId       String?
+  GTINPackagingMaster GTINPackagingMaster[]
+  BinLocation         BinLocation?          @relation(fields: [binLocationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  SSCCPackagingMaster SSCCPackagingMaster?  @relation(fields: [masterPackagingId], references: [id], onDelete: Cascade)
+}
+
+model SSCCPackagingMaster {
+  id                       String                    @id
+  SSCCNo                   String                    @unique
+  packagingType            String                    @db.VarChar(50)
+  description              String?
+  memberId                 String
+  binLocationId            String?
+  status                   String                    @default("active")
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime?
+  palletId                 String?
+  containerId              String?
+  SSCCPackagingDetail      SSCCPackagingDetail[]
+  BinLocation              BinLocation?              @relation(fields: [binLocationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ContainerPackagingMaster ContainerPackagingMaster? @relation(fields: [containerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  Member                   Member                    @relation(fields: [memberId], references: [id], onUpdate: NoAction)
+  PalletPackagingMaster    PalletPackagingMaster?    @relation(fields: [palletId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model State {
+  id         Int       @id(map: "PK_State") @default(autoincrement())
+  name       String?   @db.NVarChar(Max)
+  name_ar    String?   @db.NVarChar(Max)
+  name_nl    String?   @db.NVarChar(Max)
+  country_id Decimal?  @db.Decimal(18, 0)
+  created_at DateTime?
+  updated_at DateTime?
+}
+
+model SubPickListDetails {
+  id                 String          @id
+  pickListDetailsId  String
+  productId          String
+  productName        String?
+  productDescription String?
+  taskDescription    String?
+  unitOfMeasure      String?
+  quantity           String
+  quantityPicked     String
+  price              String
+  totalPrice         String
+  binLocation        String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime
+  PickListDetails    PickListDetails @relation(fields: [pickListDetailsId], references: [id], onDelete: Cascade)
+}
+
+model supplier_internal_users {
+  user_id                      Int                            @id(map: "PK__supplier__B9BE370F79246638") @default(autoincrement())
+  vendor_id                    Int
+  user_name                    String                         @db.NVarChar(100)
+  user_email                   String                         @unique(map: "UQ__supplier__B0FBA2124AE4E0EA") @db.NVarChar(255)
+  user_password                String                         @db.NVarChar(255)
+  user_role                    String                         @db.NVarChar(50)
+  date_created                 DateTime?                      @default(now(), map: "DF__supplier___date___2CBDA3B5") @db.DateTime
+  is_active                    Boolean?                       @default(true, map: "DF__supplier___is_ac__2DB1C7EE")
+  vendors                      vendors                        @relation(fields: [vendor_id], references: [id], onUpdate: NoAction, map: "fk_vendor_id")
+  wms_sales_picking_list_cl_rm wms_sales_picking_list_cl_rm[]
+  WMS_Sales_PickingList_CL     WMS_Sales_PickingList_CL[]
+}
+
+model sysdiagrams {
+  name         String @db.NVarChar(128)
+  principal_id Int
+  diagram_id   Int    @id(map: "PK__sysdiagr__C2B05B612F793F88") @default(autoincrement())
+  version      Int?
+  definition   Bytes?
+
+  @@unique([principal_id, name], map: "UK_principal_name")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model tbl_Dispatching_CL {
+  PACKINGSLIPID          String? @db.NVarChar(255)
+  VEHICLESHIPPLATENUMBER String? @db.NVarChar(255)
+  INVENTLOCATIONID       String? @db.NVarChar(50)
+  ITEMID                 String? @db.NVarChar(255)
+  ORDERED                Float?
+  NAME                   String? @db.NVarChar(255)
+  CONFIGID               String? @db.NVarChar(50)
+  SALESID                String? @db.NVarChar(100)
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model tbl_DispatchingDetails_CL {
+  PACKINGSLIPID          String? @db.NVarChar(255)
+  VEHICLESHIPPLATENUMBER String? @db.NVarChar(255)
+  INVENTLOCATIONID       String? @db.NVarChar(50)
+  ITEMID                 String? @db.NVarChar(255)
+  ORDERED                Float?
+  NAME                   String? @db.NVarChar(255)
+  CONFIGID               String? @db.NVarChar(50)
+  SALESID                String? @db.NVarChar(100)
+  ITEMSERIALNO           String? @db.NVarChar(200)
+
+  @@ignore
+}
+
+model tbl_DZONES {
+  tbl_DZONESID Decimal @id(map: "PK__tbl_DZON__7F6F1BBF08FBAF48") @db.Decimal(19, 0)
+  DZONE        String? @unique(map: "UQ__tbl_DZON__6BAC56EE7A8FDED3") @db.VarChar(50)
+}
+
+model tbl_EPCIS_logs {
+  id              Int     @id(map: "PK__tbl_EPCI__3213E83FDD81AB25") @default(autoincrement())
+  gs1UserId       String? @db.NVarChar(Max)
+  TransactionType String? @db.NVarChar(Max)
+  GTIN            String? @db.NVarChar(Max)
+  GLNFrom         String? @db.NVarChar(Max)
+  GLNTo           String? @db.NVarChar(Max)
+  IndustryType    String? @db.NVarChar(Max)
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model tbl_Item_Master {
+  SHIPMENTID           String?   @db.NVarChar(255)
+  CONTAINERID          String?   @db.NVarChar(255)
+  ARRIVALWAREHOUSE     String?   @db.NVarChar(255)
+  ITEMNAME             String?   @db.NVarChar(255)
+  ITEMID               String?   @db.NVarChar(255)
+  PURCHID              String?   @db.NVarChar(255)
+  CLASSIFICATION       Float?
+  SERIALNUM            String?   @db.VarChar(100)
+  RCVDCONFIGID         String?   @db.VarChar(50)
+  RCVD_DATE            DateTime? @db.Date
+  GTIN                 String?   @db.VarChar(50)
+  RZONE                String?   @db.VarChar(50)
+  PALLET_DATE          DateTime? @db.Date
+  PALLETCODE           String?   @db.VarChar(50)
+  BIN                  String?   @db.VarChar(50)
+  REMARKS              String?   @db.NVarChar(255)
+  POQTY                Decimal?  @db.Decimal(18, 0)
+  RCVQTY               Decimal?  @db.Decimal(18, 0)
+  REMAININGQTY         Decimal?  @db.Decimal(18, 0)
+  USERID               String?   @db.NChar(20)
+  TRXDATETIME          DateTime? @db.DateTime
+  TRANSFERID           String?   @db.NVarChar(20)
+  TRANSFERSTATUS       Int?
+  INVENTLOCATIONIDFROM String?   @db.NVarChar(10)
+  INVENTLOCATIONIDTO   String?   @db.NVarChar(10)
+  QTYTRANSFER          Decimal?  @db.Decimal(18, 0)
+  QTYRECEIVED          Decimal?  @db.Decimal(18, 0)
+  CREATEDDATETIME      DateTime? @db.DateTime
+  SELECTTYPE           String?   @db.NVarChar(50)
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model tbl_Items_CL {
+  ITEMID      String? @db.NVarChar(255)
+  ITEMNAME    String? @db.NVarChar(255)
+  ITEMGROUPID String? @db.NVarChar(255)
+
+  @@ignore
+}
+
+model tbl_items_ln_WIP {
+  id                 Int     @id(map: "PK__tbl_item__3213E83F538D7264") @default(autoincrement())
+  item_id            String? @db.NVarChar(255)
+  item_name          String? @db.NVarChar(Max)
+  available_quantity Int?
+  item_group_id      String? @db.NVarChar(255)
+  locations          String? @db.NVarChar(255)
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model tbl_ItemsReAllocationPicked {
+  ItemCode       String   @db.VarChar(100)
+  ItemDesc       String?  @db.NVarChar(255)
+  GTIN           String?  @db.VarChar(150)
+  Remarks        String?  @db.VarChar(100)
+  User           String?  @db.VarChar(50)
+  Classification String?  @db.VarChar(150)
+  MainLocation   String?  @db.VarChar(200)
+  BinLocation    String?  @db.VarChar(200)
+  IntCode        String?  @db.VarChar(150)
+  ItemSerialNo   String?  @db.VarChar(200)
+  MapDate        DateTime @db.Date
+  PalletCode     String?  @db.VarChar(255)
+  Reference      String   @db.VarChar(100)
+  SID            String?  @db.VarChar(50)
+  CID            String?  @db.VarChar(50)
+  PO             String?  @db.VarChar(50)
+  Trans          Decimal? @db.Decimal(10, 0)
+
+  @@ignore
+}
+
+model tbl_locations_CL {
+  LOCATIONS_HFID Decimal @id(map: "PK__tbl_loca__6438250C8CCC874B") @db.Decimal(19, 0)
+  MAIN           String  @db.VarChar(50)
+  WAREHOUSE      String  @db.VarChar(50)
+  ZONE           String  @db.VarChar(50)
+  BIN            String  @db.VarChar(50)
+  ZONE_CODE      String  @db.VarChar(50)
+  ZONE_NAME      String  @db.VarChar(50)
+  longitude      Float?
+  latitude       Float?
+}
+
+model tbl_mapped_barcodes_rm {
+  id                 Int     @id(map: "PK__tbl_mapp__3213E83F24C62905") @default(autoincrement())
+  item_id            String? @unique(map: "UQ__tbl_mapp__52020FDCC3FB9BE5") @db.NVarChar(255)
+  item_name          String? @db.NVarChar(Max)
+  available_quantity Int?
+  item_group_id      String? @db.NVarChar(255)
+}
+
+model tbl_PickListAssigned {
+  ID               Int       @id(map: "PK_tbl_PickListAssigned") @default(autoincrement())
+  PICKINGROUTEID   String?   @db.NVarChar(10)
+  INVENTLOCATIONID String?   @db.NVarChar(10)
+  CONFIGID         String?   @db.NVarChar(50)
+  ITEMID           String    @db.NVarChar(20)
+  ITEMNAME         String?   @db.NVarChar(60)
+  QTY              Decimal   @db.Decimal(28, 12)
+  CUSTOMER         String    @db.NVarChar(20)
+  DLVDATE          DateTime? @db.DateTime
+  TRANSREFID       String?   @db.NVarChar(20)
+  EXPEDITIONSTATUS Int?
+  DATETIMEASSIGNED DateTime? @db.DateTime
+  ASSIGNEDTOUSERID String?   @db.NChar(20)
+  PICKSTATUS       String?   @db.NChar(20)
+  QTYPICKED        Decimal?  @db.Decimal(28, 12)
+  WMSLOCATIONID    String?   @db.NVarChar(10)
+  ORDERSTATUS      String?   @db.VarChar(50)
+}
+
+model tbl_RZONES {
+  tbl_RZONESID Decimal @id(map: "PK__tbl_RZON__8A84B6573ED8CAEF") @db.Decimal(19, 0)
+  RZONE        String? @unique(map: "UQ__tbl_RZON__CB81A914E244384C") @db.VarChar(50)
+}
+
+model tbl_SalesOrderFromERP {
+  PICKINGROUTEID   String?  @db.NVarChar(10)
+  CUSTOMER         String?  @db.NVarChar(20)
+  INVENTLOCATIONID String?  @db.NVarChar(10)
+  TRANSREFID       String?  @db.NVarChar(20)
+  ITEMID           String   @id @db.NVarChar(20)
+  QTY              Decimal? @db.Decimal(28, 12)
+  EXPEDITIONSTATUS Int?
+  CONFIGID         String?  @db.NVarChar(10)
+  WMSLOCATIONID    String?  @db.NVarChar(10)
+  ITEMNAME         String?  @db.NVarChar(60)
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model tbl_Shipment_Counter {
+  SHIPMENTID   String  @db.NVarChar(255)
+  CONTAINERID  String  @db.NVarChar(255)
+  POQTY        Decimal @db.Decimal(18, 0)
+  REMAININGQTY Decimal @db.Decimal(18, 0)
+  ITEMID       String  @db.NVarChar(Max)
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model tbl_Shipment_Expected {
+  SHIPMENTID       String?   @db.NVarChar(255)
+  CONTAINERID      String?   @db.NVarChar(255)
+  ARRIVALWAREHOUSE String?   @db.NVarChar(255)
+  ITEMNAME         String?   @db.NVarChar(255)
+  ITEMID           String?   @db.NVarChar(255)
+  PURCHID          String?   @db.NVarChar(255)
+  CLASSIFICATION   String?   @db.NVarChar(255)
+  SERIALNUM        String    @db.VarChar(100)
+  RCVDCONFIGID     String?   @db.VarChar(50)
+  RCVD_DATE        DateTime? @db.Date
+  GTIN             String?   @db.VarChar(50)
+  RZONE            String?   @db.VarChar(50)
+  PALLET_DATE      DateTime? @db.Date
+  PALLETCODE       String?   @db.VarChar(50)
+  BIN              String?   @db.VarChar(50)
+  REMARKS          String?   @db.NVarChar(255)
+  POQTY            Decimal?  @db.Decimal(18, 0)
+  RCVQTY           Decimal?  @db.Decimal(18, 0)
+  REMAININGQTY     Decimal?  @db.Decimal(18, 0)
+  USERID           String?   @db.NChar(20)
+  TRXDATETIME      DateTime? @db.DateTime
+  WIDTH            Decimal?  @db.Decimal(10, 2)
+  HEIGHT           Decimal?  @db.Decimal(10, 2)
+  LENGTH           Decimal?  @db.Decimal(10, 2)
+  WEIGHT           Decimal?  @db.Decimal(10, 2)
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model tbl_Shipment_ExpectedR {
+  SHIPMENTID       String?   @db.NVarChar(255)
+  CONTAINERID      String?   @db.NVarChar(255)
+  ARRIVALWAREHOUSE String?   @db.NVarChar(255)
+  ITEMNAME         String?   @db.NVarChar(255)
+  ITEMID           String?   @db.NVarChar(255)
+  PURCHID          String?   @db.NVarChar(255)
+  CLASSIFICATION   String?   @db.NVarChar(255)
+  SERIALNUM        String    @db.VarChar(100)
+  RCVDCONFIGID     String?   @db.VarChar(50)
+  RCVD_DATE        DateTime? @db.Date
+  GTIN             String?   @db.VarChar(50)
+  RZONE            String?   @db.VarChar(50)
+  PALLET_DATE      DateTime? @db.Date
+  PALLETCODE       String?   @db.VarChar(50)
+  BIN              String?   @db.VarChar(50)
+  REMARKS          String?   @db.NVarChar(255)
+  POQTY            Decimal?  @db.Decimal(18, 0)
+  RCVQTY           Decimal?  @db.Decimal(18, 0)
+  REMAININGQTY     Decimal?  @db.Decimal(18, 0)
+  USERID           String?   @db.NChar(20)
+  TRXDATETIME      DateTime? @db.DateTime
+  WIDTH            Decimal?  @db.Decimal(10, 2)
+  HEIGHT           Decimal?  @db.Decimal(10, 2)
+  LENGTH           Decimal?  @db.Decimal(10, 2)
+  WEIGHT           Decimal?  @db.Decimal(10, 2)
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model tbl_Shipment_Palletizing {
+  ALS_PACKINGSLIPREF    String? @db.NVarChar(255)
+  ALS_TRANSFERORDERTYPE Float?
+  TRANSFERID            String? @db.NVarChar(255)
+  INVENTLOCATIONIDFROM  String? @db.NVarChar(255)
+  INVENTLOCATIONIDTO    String? @db.NVarChar(255)
+  QTYTRANSFER           Float?
+  ITEMID                String? @db.NVarChar(255)
+  ITEMNAME              String? @db.NVarChar(255)
+  CONFIGID              String? @db.NVarChar(50)
+  WMSLOCATIONID         String? @db.NVarChar(50)
+  SHIPMENTID            String? @db.NVarChar(255)
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model tbl_Shipment_Palletizing_CL {
+  ALS_PACKINGSLIPREF    String? @db.NVarChar(255)
+  ALS_TRANSFERORDERTYPE Float?
+  TRANSFERID            String? @db.NVarChar(255)
+  INVENTLOCATIONIDFROM  String? @db.NVarChar(255)
+  INVENTLOCATIONIDTO    String? @db.NVarChar(255)
+  QTYTRANSFER           Float?
+  ITEMID                String? @db.NVarChar(255)
+  ITEMNAME              String? @db.NVarChar(255)
+  CONFIGID              String? @db.NVarChar(50)
+  WMSLOCATIONID         String? @db.NVarChar(50)
+  SHIPMENTID            String? @db.NVarChar(255)
+
+  @@ignore
+}
+
+model tbl_Shipment_Received_CL {
+  SHIPMENTID       String?   @db.NVarChar(255)
+  CONTAINERID      String?   @db.NVarChar(255)
+  ARRIVALWAREHOUSE String?   @db.NVarChar(255)
+  ITEMNAME         String?   @db.NVarChar(255)
+  ITEMID           String?   @db.NVarChar(255)
+  PURCHID          String?   @db.NVarChar(255)
+  CLASSIFICATION   String?   @db.NVarChar(255)
+  SERIALNUM        String    @unique(map: "UQ__tbl_Ship__02DF0C3FF22A4E63") @db.VarChar(100)
+  RCVDCONFIGID     String?   @db.VarChar(50)
+  RCVD_DATE        DateTime? @db.Date
+  GTIN             String?   @db.VarChar(50)
+  RZONE            String?   @db.VarChar(50)
+  PALLET_DATE      DateTime? @db.Date
+  PALLETCODE       String?   @db.VarChar(50)
+  BIN              String?   @db.VarChar(50)
+  REMARKS          String?   @db.NVarChar(255)
+  POQTY            Decimal?  @db.Decimal(18, 0)
+  RCVQTY           Decimal?  @db.Decimal(18, 0)
+  REMAININGQTY     Decimal?  @db.Decimal(18, 0)
+  USERID           Int?
+  TRXDATETIME      DateTime? @db.DateTime
+  WIDTH            Decimal?  @db.Decimal(10, 2)
+  HEIGHT           Decimal?  @db.Decimal(10, 2)
+  LENGTH           Decimal?  @db.Decimal(10, 2)
+  WEIGHT           Decimal?  @db.Decimal(10, 2)
+}
+
+model tbl_Stock_Master {
+  ITEMID          String?   @db.NVarChar(Max)
+  ITEMNAME        String?   @db.NVarChar(Max)
+  ITEMGROUPID     String?   @db.NVarChar(Max)
+  GROUPNAME       String?   @db.NVarChar(Max)
+  Width           Decimal?  @db.Decimal(10, 2)
+  Height          Decimal?  @db.Decimal(10, 2)
+  Length          Decimal?  @db.Decimal(10, 2)
+  Weight          Decimal?  @db.Decimal(10, 2)
+  PRODLINEID      String?   @db.NVarChar(Max)
+  PRODBRANDID     String?   @db.NVarChar(Max)
+  id              String    @id @db.NVarChar(255)
+  BatchNo         String?   @db.NVarChar(Max)
+  ExpiryDate      DateTime? @db.Date
+  GTIN            String?   @db.NVarChar(Max)
+  ManufactureDate DateTime? @db.Date
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model tbl_Stock_Master_New {
+  ITEMID      String?  @db.NVarChar(Max)
+  ITEMNAME    String?  @db.NVarChar(Max)
+  ITEMGROUPID String?  @db.NVarChar(Max)
+  GROUPNAME   String?  @db.NVarChar(Max)
+  Width       Decimal? @db.Decimal(10, 2)
+  Height      Decimal? @db.Decimal(10, 2)
+  Length      Decimal? @db.Decimal(10, 2)
+  Weight      Decimal? @db.Decimal(10, 2)
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model tbl_Stock_Master_New1 {
+  ITEMID      String? @db.NVarChar(Max)
+  ITEMNAME    String? @db.NVarChar(Max)
+  ITEMGROUPID String? @db.NVarChar(Max)
+  GROUPNAME   String? @db.NVarChar(Max)
+
+  @@ignore
+}
+
+model tbl_TransactionHistory {
+  TrxNo           Int       @id(map: "PK__tbl_Tran__BBFC386048427D4E") @default(autoincrement())
+  TrxDateTime     DateTime? @db.DateTime
+  TrxUserID       String?   @db.NVarChar(150)
+  TransactionName String?   @db.NVarChar(255)
+  ItemID          String?   @db.NVarChar(255)
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model tbl_TransferBinToBin_CL {
+  ITEMID               String?   @db.NVarChar(255)
+  TRANSFERID           String?   @db.NVarChar(20)
+  TRANSFERSTATUS       Int?
+  INVENTLOCATIONIDFROM String?   @db.NVarChar(10)
+  INVENTLOCATIONIDTO   String?   @db.NVarChar(10)
+  QTYTRANSFER          Decimal?  @db.Decimal(18, 0)
+  QTYRECEIVED          Decimal?  @db.Decimal(18, 0)
+  CREATEDDATETIME      DateTime? @db.DateTime
+  ItemCode             String?   @db.VarChar(100)
+  ItemDesc             String?   @db.NVarChar(255)
+  GTIN                 String?   @db.VarChar(150)
+  Remarks              String?   @db.VarChar(100)
+  User                 String?   @db.VarChar(50)
+  Classification       String?   @db.VarChar(150)
+  MainLocation         String?   @db.VarChar(200)
+  BinLocation          String?   @db.VarChar(200)
+  IntCode              String?   @db.VarChar(150)
+  ItemSerialNo         String?   @db.VarChar(200)
+  MapDate              DateTime? @db.Date
+  PalletCode           String?   @db.VarChar(255)
+  Reference            String?   @db.VarChar(100)
+  SID                  String?   @db.VarChar(50)
+  CID                  String?   @db.VarChar(50)
+  PO                   String?   @db.VarChar(50)
+  Trans                Decimal?  @db.Decimal(10, 0)
+  SELECTTYPE           String?   @db.VarChar(100)
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model tbl_TransferJournal {
+  TRANSFERID           String?   @db.NVarChar(20)
+  TRANSFERSTATUS       Int?
+  INVENTLOCATIONIDFROM String?   @db.NVarChar(10)
+  INVENTLOCATIONIDTO   String?   @db.NVarChar(10)
+  ITEMID               String?   @db.NVarChar(20)
+  QTYTRANSFER          Decimal?  @db.Decimal(28, 12)
+  QTYRECEIVED          Decimal?  @db.Decimal(28, 12)
+  CREATEDDATETIME      DateTime? @db.DateTime
+  JournalID            String?   @db.NVarChar(50)
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model tbl_TransferJournal_CL {
+  TRANSFERID           String?   @db.NVarChar(20)
+  TRANSFERSTATUS       Int?
+  INVENTLOCATIONIDFROM String?   @db.NVarChar(20)
+  INVENTLOCATIONIDTO   String?   @db.NVarChar(20)
+  ITEMID               String?   @db.NVarChar(20)
+  QTYTRANSFER          Decimal?  @db.Decimal(28, 12)
+  QTYRECEIVED          Decimal?  @db.Decimal(28, 12)
+  CREATEDDATETIME      DateTime? @db.DateTime
+  JournalID            String?   @db.NVarChar(50)
+  BinLocation          String?   @db.VarChar(200)
+  DateTimeTransaction  DateTime? @db.Date
+  CONFIG               String?   @db.VarChar(50)
+  USERID               String?   @db.NVarChar(255)
+
+  @@ignore
+}
+
+model tblAction {
+  id          String   @id
+  name        String   @unique
+  description String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+}
+
+model TblAssetMasterEncodeAssetCapture {
+  id                       String   @id
+  memberId                 String
+  MajorCategory            String?
+  MajorCategoryDescription String?
+  MinorCategory            String?
+  MinorCategoryDescription String?
+  SerialNumber             String?
+  AssetDescription         String?
+  AssetType                String?
+  AssetCondition           String?
+  Country                  String?
+  Region                   String?
+  CityName                 String?
+  Dao                      String?
+  DaoName                  String?
+  BusinessUnit             String?
+  BuildingNo               String?
+  FloorNo                  String?
+  EmployeeID               String?
+  PONumber                 String?
+  PODate                   String?
+  DeliveryNoteNo           String?
+  Supplier                 String?
+  InvoiceNo                String?
+  InvoiceDate              String?
+  ModelOfAsset             String?
+  Manufacturer             String?
+  Ownership                String?
+  Bought                   String?
+  TerminalID               String?
+  ATMNumber                String?
+  LocationTag              String?
+  BuildingName             String?
+  BuildingAddress          String?
+  UserLoginID              String?
+  MainSubSeriesNo          Decimal? @default(0) @db.Decimal(5, 0)
+  AssetDateCaptured        String?
+  AssetTimeCaptured        String?
+  AssetDateScanned         String?
+  AssetTimeScanned         String?
+  Quantity                 Decimal? @default(0) @db.Decimal(5, 0)
+  PhoneExtNo               String?
+  FullLocationDetails      String?
+  TagNumber                String?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime
+  Member                   Member   @relation(fields: [memberId], references: [id])
+
+  @@index([SerialNumber])
+  @@index([TagNumber])
+}
+
+model TblAssetMasterEncodeAssetCaptureFinal {
+  TblAssetMasterEncodeAssetCaptureID Int              @id @unique @default(autoincrement())
+  MajorCategory                      String?
+  MajorCategoryDescription           String?
+  MInorCategory                      String?
+  MinorCategoryDescription           String?
+  TagNumber                          String?
+  sERIALnUMBER                       String?
+  aSSETdESCRIPTION                   String?
+  assettYPE                          String?
+  aSSETcONDITION                     String?
+  cOUNTRY                            String?
+  rEGION                             String?
+  CityName                           String?
+  Dao                                String?
+  DaoName                            String?
+  BusinessUnit                       String?
+  BUILDINGNO                         String?
+  FLOORNO                            String?
+  EMPLOYEEID                         String?
+  ponUmber                           String?
+  Podate                             String?
+  DeliveryNoteNo                     String?
+  Supplier                           String?
+  InvoiceNo                          String?
+  InvoiceDate                        String?
+  ModelofAsset                       String?
+  Manufacturer                       String?
+  Ownership                          String?
+  Bought                             String?
+  TerminalID                         String?
+  ATMNumber                          String?
+  LocationTag                        String?
+  buildingName                       String?
+  buildingAddress                    String?
+  MainSubSeriesNo                    Decimal?
+  QTY                                Decimal?
+  PhoneExtNo                         String?
+  FullLocationDetails                String?
+  JournalRefNo                       String?
+  Images                             String?          @db.NVarChar(Max)
+  memberId                           String?
+  subUser_id                         String?
+  assetTimeCaptured                  DateTime?        @default(now())
+  assetdatecaptured                  DateTime?        @default(now())
+  assetdatescanned                   DateTime?        @default(now())
+  EquipmentUsage                     EquipmentUsage[]
+  Member                             Member?          @relation(fields: [memberId], references: [id])
+  MemberSubUsers                     MemberSubUsers?  @relation(fields: [subUser_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  WIPAssetScan                       WIPAssetScan[]
+}
+
+model tblAssetRefTrxCode {
+  id               Int    @id(map: "PK__tblAsset__3213E83F43D3416C") @default(autoincrement())
+  ReceivingTrxCode String @db.VarChar(50)
+  AssetFANumber    String @db.VarChar(50)
+  TagNumber        String @db.VarChar(50)
+  AssetDescription String @db.VarChar(255)
+  UserId           String @db.VarChar(50)
+  GLNIdNo          String @db.VarChar(50)
+  GCPNo            String @db.VarChar(50)
+}
+
+model TblAssetTagsGTIN {
+  id         String   @id
+  gtin       String   @db.NVarChar(50)
+  batch      String   @db.NVarChar(50)
+  expiry     DateTime
+  assetTagNo String   @db.NVarChar(50)
+  mainLoc    String   @db.NVarChar(255)
+  binLoc     String   @db.NVarChar(255)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime
+}
+
+model tblAttributesEventTypes {
+  id                   String               @id
+  attributeId          String
+  eventTypeId          String
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime
+  tblStationAttributes tblStationAttributes @relation(fields: [attributeId], references: [id], onUpdate: NoAction)
+  tblEventType         tblEventType         @relation(fields: [eventTypeId], references: [id], onUpdate: NoAction)
+}
+
+model tblBusinessStep {
+  id          String   @id
+  name        String   @unique
+  description String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+}
+
+model tblBussinessType {
+  id          String   @id
+  name        String   @unique
+  description String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+}
+
+model tblDispositions {
+  id          String   @id
+  name        String   @unique
+  description String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+}
+
+model tblDReceiptsTrxAssets {
+  id               Int     @id(map: "PK_tblDReceiptsTrxAssets") @default(autoincrement())
+  TransactionId    String? @db.NVarChar(50)
+  AssetIdNo        String? @db.NVarChar(50)
+  TagNo            String? @db.NVarChar(50)
+  AssetDescription String? @db.NVarChar(Max)
+  AssetClass       String? @db.NVarChar(50)
+  AssetGLNLocation String? @db.NVarChar(50)
+}
+
+model tblDReceiptsTrxDetails {
+  id                Int       @id(map: "PK_tblDReceiptsTrxDetails") @default(autoincrement())
+  TransactionId     String?   @db.VarChar(50)
+  GTIN              String?   @db.NVarChar(50)
+  ProductNameEn     String?   @db.VarChar(Max)
+  ProductNameAr     String?   @db.VarChar(Max)
+  BrandName         String?   @db.VarChar(50)
+  Batch             String?   @db.NVarChar(50)
+  NetWeight         Decimal?  @db.Decimal(18, 1)
+  UnitOfMeasure     String?   @db.VarChar(50)
+  Quantity          Int?
+  SSCC              String?   @db.NVarChar(50)
+  ManufacturingDate DateTime? @db.Date
+  ExpiryDate        DateTime? @db.Date
+  TranspoGLN        String?   @db.NVarChar(50)
+}
+
+model tblDReceiptsTrxMaster {
+  id                  Int       @id(map: "PK_tblDReceiptsTrxMaster") @default(autoincrement())
+  TransactionId       String?   @db.VarChar(50)
+  TransactionDateTime DateTime?
+  UserId              String?   @db.VarChar(50)
+  TypeOfTransaction   String?   @db.VarChar(50)
+  GLNIdFrom           String?   @db.NVarChar(Max)
+  GLNIdTo             String?   @db.NVarChar(Max)
+  RefNum              String?   @db.NVarChar(50)
+  TranspoGLN          String?   @db.NVarChar(50)
+  Status              String?   @db.NVarChar(50)
+}
+
+model tblEventType {
+  id                      String                    @id
+  name                    String
+  description             String
+  tblAttributesEventTypes tblAttributesEventTypes[]
+}
+
+model TblGCP {
+  TblSysNoID Decimal @id(map: "PK__TblGCP__1AAA6A36330FF75B") @db.Decimal(19, 0)
+  GS1GCPID   String? @db.VarChar(10)
+}
+
+model tblGeneratedPalletDetails {
+  ssc_number String?   @db.VarChar(50)
+  gtin       String?   @db.VarChar(50)
+  serial_no  String?   @db.VarChar(100)
+  time_stamp DateTime? @default(now(), map: "DF__tblGenera__time___55BFB948") @db.DateTime
+  id         Int       @id(map: "PK__tblGener__3214EC27CD318F8C") @default(autoincrement())
+}
+
+model tblGeneratedPalletMaster {
+  ssc_number  String?   @db.VarChar(50)
+  gtin        String?   @db.VarChar(50)
+  time_stamp  DateTime? @default(now(), map: "DF__tblGenera__time___53D770D6") @db.DateTime
+  user_id     String?   @db.NVarChar(50)
+  id          Int       @id(map: "PK__tblGener__3214EC27ACA88095") @default(autoincrement())
+  no_of_box   Int?
+  qty_per_box Int?
+}
+
+model tblGoodsIssueDetails {
+  id                Int       @id(map: "PK__tblGoods__3213E83F2274F1F1") @default(autoincrement())
+  ShippingTrxCode   String    @db.VarChar(50)
+  GTIN              String    @db.VarChar(14)
+  ItemSKU           String    @db.VarChar(50)
+  BatchNo           String    @db.VarChar(50)
+  SerialNo          String    @db.VarChar(50)
+  ManufacturingDate DateTime  @db.DateTime
+  ExpiryDate        DateTime  @db.DateTime
+  PackagingDate     DateTime  @db.DateTime
+  SellBy            DateTime  @db.DateTime
+  ReceivingUOM      String    @db.VarChar(50)
+  BoxBarcode        String    @db.VarChar(50)
+  SSCCBarcode       String    @db.VarChar(50)
+  Qty               Decimal   @db.Decimal(18, 2)
+  DateCreated_At    DateTime? @default(now(), map: "DF__tblGoodsI__DateC__76EBA2E9") @db.DateTime
+  DateUpdated_At    DateTime? @default(now(), map: "DF__tblGoodsI__DateU__77DFC722") @db.DateTime
+  EUDAMED_Code      String    @db.VarChar(50)
+  UDI_Code          String    @db.VarChar(50)
+  GPC_Code          String    @db.VarChar(50)
+}
+
+model tblGoodsIssueMaster {
+  id                  Int      @id(map: "PK__tblGoods__3213E83F2802FF8B") @default(autoincrement())
+  ShippingTrxCode     String   @db.VarChar(50)
+  ShipToLocation      String   @db.VarChar(50)
+  GrowerSupplierGLN   String   @db.VarChar(50)
+  ShipFromGLN         String   @db.VarChar(50)
+  ShipDate            DateTime @db.DateTime
+  ActivityType        String   @db.VarChar(50)
+  PurchaseOrderNo     String   @db.VarChar(50)
+  SalesOrderNo        String   @db.VarChar(50)
+  SalesInvoiceNo      String   @db.VarChar(50)
+  TransactionDateTime DateTime @db.DateTime
+  UserId              String   @db.VarChar(50)
+  GLNIdNo             String   @db.VarChar(50)
+  GCPNo               String   @db.VarChar(50)
+}
+
+model tblGTINQrCodeMasterDLinks {
+  id         String    @id
+  hostDomain String
+  gtin       String    @unique
+  batchNo    String?
+  expiryDate DateTime?
+  serialNo   String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime
+  memberId   String
+  Member     Member    @relation(fields: [memberId], references: [id])
+}
+
+model tblMappedBarcodes {
+  ItemCode       String    @db.VarChar(100)
+  ItemDesc       String?   @db.NVarChar(255)
+  GTIN           String?   @db.VarChar(150)
+  Remarks        String?   @db.VarChar(100)
+  User           String?   @db.VarChar(50)
+  Classification String?   @db.VarChar(150)
+  MainLocation   String?   @db.VarChar(200)
+  BinLocation    String?   @db.VarChar(200)
+  IntCode        String?   @db.VarChar(150)
+  ItemSerialNo   String?   @db.VarChar(200)
+  MapDate        DateTime? @db.Date
+  PalletCode     String?   @db.VarChar(255)
+  Reference      String?   @db.VarChar(100)
+  SID            String?   @db.VarChar(50)
+  CID            String?   @db.VarChar(50)
+  PO             String?   @db.VarChar(50)
+  Trans          Decimal?  @db.Decimal(10, 0)
+  Length         Decimal?  @db.Decimal(10, 2)
+  Width          Decimal?  @db.Decimal(10, 2)
+  Height         Decimal?  @db.Decimal(10, 2)
+  Weight         Decimal?  @db.Decimal(10, 2)
+  QrCode         String?   @db.VarChar(255)
+  TrxDate        DateTime? @db.Date
+  id             String    @id
+  createdAt      DateTime? @default(now())
+  updatedAt      DateTime?
+  ExpiryDate     DateTime? @db.Date
+  BatchNo        String?   @db.NVarChar(Max)
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model tblMappedBarcodes_Deleted {
+  ItemCode       String?   @db.NVarChar(Max)
+  ItemDesc       String?   @db.NVarChar(Max)
+  GTIN           String?   @db.NVarChar(Max)
+  Remarks        String?   @db.NVarChar(Max)
+  User           String?   @db.NVarChar(Max)
+  Classification String?   @db.NVarChar(Max)
+  MainLocation   String?   @db.NVarChar(Max)
+  BinLocation    String?   @db.NVarChar(Max)
+  IntCode        String?   @db.NVarChar(Max)
+  ItemSerialNo   String?   @db.NVarChar(Max)
+  MapDate        DateTime? @db.Date
+  PalletCode     String?   @db.NVarChar(Max)
+  Reference      String?   @db.NVarChar(Max)
+  SID            String?   @db.NVarChar(Max)
+  CID            String?   @db.NVarChar(Max)
+  PO             String?   @db.NVarChar(Max)
+  Trans          Float?
+  Length         Decimal?  @db.Decimal(10, 2)
+  Width          Decimal?  @db.Decimal(10, 2)
+  Height         Decimal?  @db.Decimal(10, 2)
+  Weight         Decimal?  @db.Decimal(10, 2)
+  QrCode         String?   @db.VarChar(Max)
+  TrxDate        DateTime? @db.Date
+
+  @@ignore
+}
+
+model tblMasterLocations {
+  id          String   @id
+  name        String   @unique
+  description String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model tblPalletMaster {
+  GroupWarehouse  String? @db.NVarChar(Max)
+  Zones           String? @db.NVarChar(Max)
+  PalletNumber    String? @db.NVarChar(Max)
+  PalletHeight    Float?
+  PalletRow       Float?
+  PalletWidth     Float?
+  PalletTotalSize Float?
+  PalletType      String? @db.NVarChar(Max)
+  PalletLength    Float?
+
+  @@ignore
+}
+
+model tblPermissions {
+  PermissionID       Int                  @id(map: "PK__tblPermi__EFA6FB0FB37BCC3E") @default(autoincrement())
+  PermissionName     String               @db.NVarChar(255)
+  tblRolePermissions tblRolePermissions[]
+}
+
+model tblPickListHistory {
+  id                 String          @id
+  pickListDetailsId  String
+  productId          String
+  productName        String?
+  productDescription String?
+  taskDescription    String?
+  unitOfMeasure      String?
+  quantity           String
+  quantityPicked     String
+  price              String
+  totalPrice         String
+  binLocation        String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime
+  pickDate           DateTime
+  pickerName         String
+  jobOrderNumber     String
+  pickListNumber     String
+  PickListDetails    PickListDetails @relation(fields: [pickListDetailsId], references: [id])
+}
+
+model tblPODetailsFromCustomer {
+  po_detail_id             Int                        @id(map: "PK__tblPODet__9E6103B2C8ECBE61") @default(autoincrement())
+  po_header_id             Int
+  product_name             String                     @db.NVarChar(255)
+  quantity                 Decimal?                   @db.Decimal(18, 2)
+  price                    Decimal?                   @db.Decimal(18, 2)
+  price_subtotal           Decimal?                   @db.Decimal(18, 2)
+  price_total              Decimal?                   @db.Decimal(18, 2)
+  date_order               DateTime?                  @db.DateTime
+  state                    String?                    @db.NVarChar(50)
+  partner_name             String?                    @db.NVarChar(255)
+  tblPOHeaderFromCustomer  tblPOHeaderFromCustomer    @relation(fields: [po_header_id], references: [po_header_id], onDelete: Cascade, onUpdate: NoAction, map: "FK_POHeader")
+  WMS_Sales_PickingList_CL WMS_Sales_PickingList_CL[]
+}
+
+model tblPOHeaderFromCustomer {
+  po_header_id             Int                        @id(map: "PK__tblPOHea__E593D9E33BF38D8A") @default(autoincrement())
+  member_id                String?
+  create_date              DateTime?                  @db.DateTime
+  supplier_id              Int?
+  purchase_order           String                     @default("TEMP_VALUE", map: "DF__tblPOHead__Purch__318258D2") @db.NVarChar(255)
+  tblPODetailsFromCustomer tblPODetailsFromCustomer[]
+  vendors                  vendors?                   @relation(fields: [supplier_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK__tblPOHead__suppl__2610A626")
+  WMS_Sales_PickingList_CL WMS_Sales_PickingList_CL[]
+
+  @@unique([supplier_id, purchase_order], map: "UC_Supplier_PurchaseOrder")
+}
+
+model tblPurchaseOrderDetails {
+  id                      Int                       @id(map: "PK__tblPurch__3213E83F5F47E5C0") @default(autoincrement())
+  purchaseOrderId         Int
+  GTIN                    String                    @db.VarChar(50)
+  ItemId                  String                    @db.VarChar(50)
+  quantity                Int
+  price                   Float
+  totalPrice              Float
+  createdAt               DateTime                  @default(now(), map: "DF__tblPurcha__creat__00750D23") @db.DateTime
+  updatedAt               DateTime                  @default(now(), map: "DF__tblPurcha__updat__0169315C") @db.DateTime
+  tblPurchaseOrderMaster  tblPurchaseOrderMaster    @relation(fields: [purchaseOrderId], references: [id], onUpdate: NoAction, map: "FK__tblPurcha__purch__025D5595")
+  tblPurchaseOrderSerials tblPurchaseOrderSerials[]
+}
+
+model tblPurchaseOrderMaster {
+  id                      Int                       @id(map: "PK__tblPurch__3213E83F6A632083") @default(autoincrement())
+  purchaseOrderNumber     String                    @unique(map: "UQ__tblPurch__B2A7B4E16BAFFCBF") @db.VarChar(255)
+  supplierId              Int
+  orderDate               DateTime                  @default(now(), map: "DF__tblPurcha__order__7BB05806") @db.DateTime
+  deliveryDate            DateTime                  @db.DateTime
+  totalAmount             Float
+  status                  String                    @db.VarChar(50)
+  createdAt               DateTime                  @default(now(), map: "DF__tblPurcha__creat__7CA47C3F") @db.DateTime
+  updatedAt               DateTime                  @default(now(), map: "DF__tblPurcha__updat__7D98A078") @db.DateTime
+  tblPurchaseOrderDetails tblPurchaseOrderDetails[]
+}
+
+model tblPurchaseOrderSerials {
+  id                      Int                     @id(map: "PK__tblPurch__3213E83F39E1A7A0") @default(autoincrement())
+  purchaseOrderDetailId   Int
+  serialNumber            String                  @unique(map: "UQ__tblPurch__3304A0950083709F") @db.VarChar(255)
+  GTIN                    String                  @db.VarChar(50)
+  ItemId                  String                  @db.VarChar(50)
+  createdAt               DateTime                @default(now(), map: "DF__tblPurcha__creat__062DE679") @db.DateTime
+  updatedAt               DateTime                @default(now(), map: "DF__tblPurcha__updat__07220AB2") @db.DateTime
+  tblPurchaseOrderDetails tblPurchaseOrderDetails @relation(fields: [purchaseOrderDetailId], references: [id], onUpdate: NoAction, map: "FK__tblPurcha__purch__08162EEB")
+}
+
+model tblReceivingDetails {
+  id                Int       @id(map: "PK__tblRecei__3213E83FFE33A46B") @default(autoincrement())
+  ReceivingTrxCode  String    @db.VarChar(50)
+  GTIN              String    @db.VarChar(14)
+  ItemSKU           String    @db.VarChar(50)
+  BatchNo           String    @db.VarChar(50)
+  SerialNo          String    @db.VarChar(50)
+  ManufacturingDate DateTime  @db.DateTime
+  ExpiryDate        DateTime  @db.DateTime
+  PackagingDate     DateTime  @db.DateTime
+  SellBy            DateTime  @db.DateTime
+  ReceivingUOM      String    @db.VarChar(50)
+  BoxBarcode        String    @db.VarChar(50)
+  SSCCBarcode       String    @db.VarChar(50)
+  Qty               Decimal   @db.Decimal(18, 2)
+  DateCreated_At    DateTime? @default(now(), map: "DF__tblReceiv__DateC__7132C993") @db.DateTime
+  DateUpdated_At    DateTime? @default(now(), map: "DF__tblReceiv__DateU__7226EDCC") @db.DateTime
+  EUDAMED_Code      String    @db.VarChar(50)
+  UDI_Code          String    @db.VarChar(50)
+  GPC_Code          String    @db.VarChar(50)
+}
+
+model tblReceivingMaster {
+  id                  Int      @id(map: "PK__tblRecei__3213E83F3E27EE4B") @default(autoincrement())
+  ReceivingTrxCode    String   @db.VarChar(50)
+  ShipToLocation      String   @db.VarChar(50)
+  GrowerSupplierGLN   String   @db.VarChar(50)
+  ShipFromGLN         String   @db.VarChar(50)
+  ShipDate            DateTime @db.DateTime
+  ActivityType        String   @db.VarChar(50)
+  PurchaseOrderNo     String   @db.VarChar(50)
+  GoodsReceiptRefNo   String   @db.VarChar(50)
+  TransactionDateTime DateTime @db.DateTime
+  AssetRefTrxCode     String   @db.VarChar(50)
+  UserId              String   @db.VarChar(50)
+  GLNIdNo             String   @db.VarChar(50)
+  GCPNo               String   @db.VarChar(50)
+}
+
+model tblRolePermissions {
+  RoleID          Int
+  PermissionID    Int
+  AddedByMemberID Int?
+  DateAdded       DateTime?      @default(now(), map: "DF__tblRolePe__DateA__2FCF1A8A") @db.DateTime
+  tblPermissions  tblPermissions @relation(fields: [PermissionID], references: [PermissionID], onUpdate: NoAction, map: "FK__tblRolePe__Permi__31B762FC")
+  tblRoles        tblRoles       @relation(fields: [RoleID], references: [RoleID], onUpdate: NoAction, map: "FK__tblRolePe__RoleI__30C33EC3")
+
+  @@id([RoleID, PermissionID], map: "PK__tblRoleP__6400A18AE9746FD7")
+}
+
+model tblRoles {
+  RoleID             Int                  @id(map: "PK__tblRoles__8AFACE3A65E05846") @default(autoincrement())
+  RoleName           String               @db.NVarChar(255)
+  tblRolePermissions tblRolePermissions[]
+  tblUserRoles       tblUserRoles[]
+}
+
+model tblStationAttributes {
+  id                                String                              @id
+  fieldName                         String                              @unique
+  fieldType                         String
+  fieldDescription                  String
+  tblAttributesEventTypes           tblAttributesEventTypes[]
+  tblStationAttributesInUsedDetails tblStationAttributesInUsedDetails[]
+}
+
+model tblStationAttributesHistory {
+  id                           String    @id
+  eventTime                    DateTime?
+  eventTimeZoneOffset          String?
+  recordTime                   DateTime?
+  transformationID             String?
+  businessStep                 String?
+  disposition                  String?
+  readPoint                    String?
+  businessLocation             String?
+  transformationType           String?
+  transformationParameters     String?
+  transformationOperator       String?
+  transformationEquipment      String?
+  transformationCertifications String?
+  transformationDocumentation  String?
+  transformationEventLinks     String?
+  transformationEventMetadata  String?
+  inputEPCList                 String?
+  inputQuantityList            String?
+  inputLotList                 String?
+  inputRawMaterialInfo         String?
+  inputSource                  String?
+  inputTransformationState     String?
+  inputCertifications          String?
+  inputExpirationDate          DateTime?
+  inputTransformationReason    String?
+  outputEPCList                String?
+  outputQuantityList           String?
+  outputLotList                String?
+  outputProductInfo            String?
+  outputDestination            String?
+  outputTransformationState    String?
+  outputCertifications         String?
+  outputExpirationDate         DateTime?
+  outputTransformationReason   String?
+  createdAt                    DateTime  @default(now())
+  updatedAt                    DateTime
+  childEPCs                    String?
+  childQuantityList            String?
+  destinationList              String?
+  epcList                      String?
+  parentID                     String?
+  persistentDisposition        String?
+  quantityList                 String?
+  gs1CompanyPrefix             String?
+  memberId                     String?
+  action                       String?
+  Member                       Member?   @relation(fields: [memberId], references: [id])
+}
+
+model tblStationAttributesInUsedDetails {
+  id                               String                           @id
+  masterId                         String
+  attributeId                      String
+  createdAt                        DateTime                         @default(now())
+  updatedAt                        DateTime
+  tblStationAttributes             tblStationAttributes             @relation(fields: [attributeId], references: [id])
+  tblStationAttributesInUsedMaster tblStationAttributesInUsedMaster @relation(fields: [masterId], references: [id])
+}
+
+model tblStationAttributesInUsedMaster {
+  id                                String                              @id
+  eventStationId                    String
+  createdAt                         DateTime                            @default(now())
+  updatedAt                         DateTime
+  tblStationAttributesInUsedDetails tblStationAttributesInUsedDetails[]
+  EventStations                     EventStations                       @relation(fields: [eventStationId], references: [id], onDelete: Cascade)
+}
+
+model TblSysNo {
+  TblSysNoID            Decimal  @id(map: "PK__TblSysNo__1AAA6A366E627A9C") @db.Decimal(19, 0)
+  SSCC_AutoCounter      Decimal? @default(0, map: "DF__TblSysNo__SSCC_A__47DBAE45") @db.Decimal(10, 0)
+  InventoryTrxNo        Decimal? @default(0, map: "DF__TblSysNo__Invent__48CFD27E") @db.Decimal(10, 0)
+  PickSlipTrxNo         Decimal? @default(0, map: "DF__TblSysNo__PickSl__49C3F6B7") @db.Decimal(10, 0)
+  JournalIDWMSInventory Decimal? @db.Decimal(10, 0)
+  ITEMIDSeriesNo        Decimal? @db.Decimal(10, 0)
+  StockMasterSerialNo   Decimal? @db.Decimal(10, 0)
+  RFQSeriesNo           Decimal? @default(0, map: "DF__TblSysNo__RFQSer__50C3F6B8") @db.Decimal(10, 0)
+  GDTICounter           Decimal? @db.Decimal(10, 0)
+}
+
+model tblTrxReceivingType {
+  id            Int     @id(map: "PK_tblTrxReceivingType") @default(autoincrement())
+  ReceivingType String? @db.NVarChar(Max)
+}
+
+model tblUserRoles {
+  UserID          Int
+  RoleID          Int
+  AddedByMemberID Int?
+  tblRoles        tblRoles @relation(fields: [RoleID], references: [RoleID], onUpdate: NoAction, map: "FK__tblUserRo__RoleI__395884C4")
+  tblUsers        tblUsers @relation(fields: [UserID], references: [UserID], onDelete: Cascade, onUpdate: NoAction, map: "FK__tblUserRo__UserI__3864608B")
+
+  @@id([UserID, RoleID], map: "PK__tblUserR__AF27604F0A2445B3")
+}
+
+model tblUsers {
+  UserID          Int            @id(map: "PK__tblUsers__1788CCACBB8AFE7C") @default(autoincrement())
+  UserName        String         @db.NVarChar(255)
+  PasswordHash    String         @db.NVarChar(255)
+  Email           String         @unique(map: "UQ__tblUsers__A9D10534A50C5CE6") @db.NVarChar(255)
+  AddedByMemberID String?        @db.NVarChar(255)
+  DateAdded       DateTime?      @default(now(), map: "DF__tblUsers__DateAd__2645B050") @db.DateTime
+  PhoneNumber     String?        @db.NVarChar(Max)
+  Image           String?        @db.NVarChar(Max)
+  tblUserRoles    tblUserRoles[]
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model tblZones {
+  GroupWarehouse String? @db.VarChar(150)
+  Zones          String? @db.VarChar(150)
+  BinNumber      String? @db.VarChar(150)
+  ZoneType       String? @db.VarChar(150)
+
+  @@ignore
+}
+
+model Template {
+  id             String    @id
+  name           String    @db.NVarChar(Max)
+  name_ar        String    @db.NVarChar(Max)
+  description    String?   @db.NVarChar(Max)
+  description_ar String?   @db.NVarChar(Max)
+  created_at     DateTime  @default(now()) @db.DateTime
+  updated_at     DateTime  @default(now()) @db.DateTime
+  NewPage        NewPage[]
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model TransferDistribution_Shipment {
+  TRANSFERID String? @db.NVarChar(20)
+  SHIPMENTID String? @db.VarChar(255)
+
+  @@ignore
+}
+
+model Units {
+  id         Decimal   @id(map: "PK_Units") @db.Decimal(18, 0)
+  unit_code  String?   @db.NVarChar(Max)
+  unit_name  String?   @db.NVarChar(Max)
+  status     Decimal?  @db.Decimal(18, 0)
+  created_at DateTime?
+  updated_at DateTime?
+}
+
+model UNSPSC {
+  id         Decimal   @id(map: "PK_UNSPSC") @db.Decimal(18, 0)
+  commodity  Int?
+  title      String?   @db.NVarChar(Max)
+  definition String?   @db.NVarChar(Max)
+  addedBy    Int?
+  created_at DateTime?
+  updated_at DateTime?
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model upcoming_events {
+  id             String?   @db.NVarChar(Max)
+  title          String?   @db.NVarChar(Max)
+  title_ar       String?   @db.NVarChar(Max)
+  image          String?   @db.NVarChar(Max)
+  date           String?   @db.NVarChar(Max)
+  link           String?   @db.NVarChar(Max)
+  description    String?   @db.NVarChar(Max)
+  description_ar String?   @db.NVarChar(Max)
+  status         Int?
+  created_at     DateTime? @db.DateTime
+  updated_at     DateTime? @db.DateTime
+  video          String?   @db.NVarChar(Max)
+  display_type   String?   @db.NVarChar(Max)
+  description_nl String?   @db.NVarChar(Max)
+  title_nl       String?   @db.NVarChar(Max)
+
+  @@ignore
+}
+
+model VehicleMaster {
+  id                          String                        @id
+  plate_number                String?                       @unique
+  make                        String?
+  model                       String?
+  year                        Int?
+  color                       String?
+  owner                       String?
+  vin_number                  String?                       @unique
+  gln_id_number               String?
+  giai_number                 String?
+  member_id                   String
+  assignedDriverId            String?
+  createdAt                   DateTime                      @default(now())
+  updatedAt                   DateTime
+  type                        String?
+  leaseCompanyName            String?
+  SalesInvoiceDetails         SalesInvoiceDetails[]
+  SalesInvoicePickListDetails SalesInvoicePickListDetails[]
+  MemberSubUsers              MemberSubUsers?               @relation(fields: [assignedDriverId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  Member                      Member                        @relation(fields: [member_id], references: [id], onDelete: Cascade)
+}
+
+model vendors {
+  id                           Int                            @id(map: "PK__vendors__3213E83FA03A7F93") @default(autoincrement())
+  member_id                    String
+  email                        String                         @db.VarChar(255)
+  company_name_English         String?                        @db.VarChar(255)
+  company_name_Arabic          String?                        @db.NVarChar(255)
+  contact_person               String?                        @db.VarChar(255)
+  company_landline             String?                        @db.VarChar(15)
+  mobile_no                    String?                        @db.VarChar(15)
+  extension                    String?                        @db.VarChar(10)
+  zip_code                     String?                        @db.VarChar(10)
+  website                      String?                        @db.VarChar(255)
+  password                     String?                        @db.VarChar(255)
+  status                       String?                        @default("onhold", map: "DF_vendors_status") @db.VarChar(10)
+  country                      String?                        @db.VarChar(255)
+  state                        String?                        @db.VarChar(255)
+  city                         String?                        @db.VarChar(255)
+  addressLine1                 String?                        @db.VarChar(255)
+  createdAt                    DateTime?                      @default(now())
+  globalLocationNumber         String?                        @db.VarChar(255)
+  supplierName                 String?                        @db.VarChar(255)
+  supplierType                 String?
+  updatedAt                    DateTime?
+  approved_vendors             approved_vendors[]
+  supplier_internal_users      supplier_internal_users[]
+  tblPOHeaderFromCustomer      tblPOHeaderFromCustomer[]
+  wms_sales_picking_list_cl_rm wms_sales_picking_list_cl_rm[]
+  WMS_Sales_PickingList_CL     WMS_Sales_PickingList_CL[]
+
+  @@unique([email, member_id], map: "UQ_EmailAndMemberID")
+}
+
+model WIP_BillOfMaterial {
+  id             String   @id
+  wipItemId      String
+  quantityPicked String
+  binLocation    String
+  status         String   @default("picked")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime
+  serialGTIN     String
+  serialNo       String
+  WIP_Item       WIP_Item @relation(fields: [wipItemId], references: [id], onDelete: Cascade)
+}
+
+model WIP_Item {
+  id                 String               @id
+  jobOrderId         String
+  jobOrderDetailsId  String
+  productId          String
+  productName        String?
+  productDescription String?
+  unitOfMeasure      String?
+  quantity           String
+  price              String
+  totalPrice         String
+  picked_date        DateTime             @default(now())
+  status             String               @default("pending")
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime
+  binLocationId      String?
+  FinishedGoods      FinishedGoods[]
+  WIP_BillOfMaterial WIP_BillOfMaterial[]
+  BinLocation        BinLocation?         @relation(fields: [binLocationId], references: [id], onDelete: Cascade)
+  JobOrderDetails    JobOrderDetails      @relation(fields: [jobOrderDetailsId], references: [id], onUpdate: NoAction)
+  JobOrderMaster     JobOrderMaster       @relation(fields: [jobOrderId], references: [id], onDelete: Cascade)
+}
+
+model WIPAssetBOM {
+  id                   String             @id
+  wipAssetInProgressId String
+  jobOrderDetailsId    String
+  productId            String
+  productName          String
+  productDescription   String?
+  quantity             Int
+  quantityPicked       Int
+  binLocation          String
+  status               String?            @default("pending")
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime
+  WIPAssetInProgress   WIPAssetInProgress @relation(fields: [wipAssetInProgressId], references: [id], onDelete: Cascade)
+}
+
+model WIPAssetInProgress {
+  id                          String         @id
+  jobOrderNumber              String         @unique
+  jobDescription              String?
+  productionExecutionDateTime DateTime       @default(now())
+  createdAt                   DateTime       @default(now())
+  updatedAt                   DateTime
+  WIPAssetBOM                 WIPAssetBOM[]
+  WIPAssetItem                WIPAssetItem[]
+  WIPAssetScan                WIPAssetScan[]
+}
+
+model WIPAssetItem {
+  id                   String             @id
+  wipAssetInProgressId String
+  gtin                 String
+  itemDescription      String
+  quantity             Int
+  unitOfMeasure        String
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime
+  WIPAssetInProgress   WIPAssetInProgress @relation(fields: [wipAssetInProgressId], references: [id], onDelete: Cascade)
+}
+
+model WIPAssetScan {
+  id                                    String                                @id
+  wipAssetInProgressId                  String
+  tagNumber                             String
+  tblAssetMasterEncodeAssetCaptureID    Int
+  assetDescription                      String?
+  createdAt                             DateTime                              @default(now())
+  updatedAt                             DateTime
+  TblAssetMasterEncodeAssetCaptureFinal TblAssetMasterEncodeAssetCaptureFinal @relation(fields: [tblAssetMasterEncodeAssetCaptureID], references: [TblAssetMasterEncodeAssetCaptureID], onDelete: Cascade)
+  WIPAssetInProgress                    WIPAssetInProgress                    @relation(fields: [wipAssetInProgressId], references: [id], onDelete: Cascade)
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model WMS_Journal_Counting_CL {
+  ITEMID              String?   @db.NVarChar(Max)
+  ITEMNAME            String?   @db.NVarChar(Max)
+  QTY                 Float?
+  INVENTONHAND        Float?
+  COUNTED             Float?
+  JOURNALID           String?   @db.NVarChar(Max)
+  TRANSDATE           DateTime? @db.DateTime
+  INVENTSITEID        String?   @db.NVarChar(Max)
+  INVENTLOCATIONID    String?   @db.NVarChar(Max)
+  CONFIGID            String?   @db.NVarChar(Max)
+  WMSLOCATIONID       String?   @db.NVarChar(Max)
+  TRXDATETIME         DateTime? @db.DateTime
+  TRXUSERIDASSIGNED   String?   @db.NVarChar(20)
+  TRXUSERIDASSIGNEDBY String?   @db.NVarChar(20)
+  ITEMSERIALNO        String?   @db.VarChar(200)
+  QTYSCANNED          Float?
+  QTYDIFFERENCE       Float?
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model WMS_Journal_Counting_CLDets {
+  ITEMID              String?   @db.NVarChar(Max)
+  ITEMNAME            String?   @db.NVarChar(Max)
+  QTY                 Float?
+  INVENTONHAND        Float?
+  COUNTED             Float?
+  JOURNALID           String?   @db.NVarChar(Max)
+  TRANSDATE           DateTime? @db.DateTime
+  INVENTSITEID        String?   @db.NVarChar(Max)
+  INVENTLOCATIONID    String?   @db.NVarChar(Max)
+  CONFIGID            String?   @db.NVarChar(Max)
+  WMSLOCATIONID       String?   @db.NVarChar(Max)
+  TRXDATETIME         DateTime? @db.DateTime
+  TRXUSERIDASSIGNED   String?   @db.NVarChar(20)
+  TRXUSERIDASSIGNEDBY String?   @db.NVarChar(20)
+  ITEMSERIALNO        String?   @db.VarChar(200)
+  QTYSCANNED          Float?
+  QTYDIFFERENCE       Float?
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model WMS_Journal_Counting_Only {
+  ITEMID              String?   @db.NVarChar(Max)
+  ITEMNAME            String?   @db.NVarChar(Max)
+  QTY                 Float?
+  INVENTONHAND        Float?
+  COUNTED             Float?
+  JOURNALID           String?   @db.NVarChar(Max)
+  TRANSDATE           DateTime? @db.DateTime
+  INVENTSITEID        String?   @db.NVarChar(Max)
+  INVENTLOCATIONID    String?   @db.NVarChar(Max)
+  CONFIGID            String?   @db.NVarChar(Max)
+  WMSLOCATIONID       String?   @db.NVarChar(Max)
+  TRXDATETIME         DateTime? @db.DateTime
+  TRXUSERIDASSIGNED   String?   @db.NVarChar(20)
+  TRXUSERIDASSIGNEDBY String?   @db.NVarChar(20)
+  ITEMSERIALNO        String?   @db.VarChar(200)
+  QTYSCANNED          Float?
+  QTYDIFFERENCE       Float?
+
+  @@ignore
+}
+
+model WMS_Journal_Counting_OnlyCL {
+  ITEMID              String?   @db.NVarChar(Max)
+  ITEMNAME            String?   @db.NVarChar(Max)
+  ITEMGROUPID         String?   @db.NVarChar(Max)
+  GROUPNAME           String?   @db.NVarChar(Max)
+  INVENTORYBY         String?   @db.NVarChar(Max)
+  TRXDATETIME         DateTime? @db.DateTime
+  TRXUSERIDASSIGNED   String?   @db.NVarChar(20)
+  TRXUSERIDASSIGNEDBY String?   @db.NVarChar(20)
+  QTYSCANNED          Float?
+  QTYDIFFERENCE       Float?
+  QTYONHAND           Float?
+  JOURNALID           Int       @id(map: "PK__WMS_Jour__827376D756FCAA45") @default(autoincrement())
+  BINLOCATION         String?   @db.NVarChar(50)
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model WMS_Journal_Counting_OnlyCLDets {
+  ITEMID                String?   @db.NVarChar(Max)
+  ITEMNAME              String?   @db.NVarChar(Max)
+  ITEMGROUPID           String?   @db.NVarChar(Max)
+  GROUPNAME             String?   @db.NVarChar(Max)
+  INVENTORYBY           String?   @db.NVarChar(Max)
+  TRXDATETIME           DateTime? @db.DateTime
+  TRXUSERIDASSIGNED     String?   @db.NVarChar(20)
+  TRXUSERIDASSIGNEDBY   String?   @db.NVarChar(20)
+  CONFIGID              String?   @db.NVarChar(Max)
+  ITEMSERIALNO          String?   @db.VarChar(200)
+  DATETIMESCANNED       DateTime? @db.DateTime
+  CURRENTUSERLOGGEDINID String?   @db.NVarChar(20)
+  QTYSCANNED            Float?
+  BINLOCATION           String?   @db.NVarChar(Max)
+  JOURNALID             Int?
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model WMS_Journal_Movement_CL {
+  ITEMID                String?   @db.NVarChar(Max)
+  ITEMNAME              String?   @db.NVarChar(Max)
+  QTY                   Float?
+  LEDGERACCOUNTIDOFFSET String?   @db.NVarChar(Max)
+  JOURNALID             String?   @db.NVarChar(Max)
+  TRANSDATE             DateTime? @db.DateTime
+  INVENTSITEID          String?   @db.NVarChar(Max)
+  INVENTLOCATIONID      String?   @db.NVarChar(Max)
+  CONFIGID              String?   @db.NVarChar(Max)
+  WMSLOCATIONID         String?   @db.NVarChar(Max)
+  TRXDATETIME           DateTime? @db.DateTime
+  TRXUSERIDASSIGNED     String?   @db.NVarChar(20)
+  TRXUSERIDASSIGNEDBY   String?   @db.NVarChar(20)
+  ITEMSERIALNO          String?   @db.VarChar(200)
+  QTYSCANNED            Float?
+  QTYDIFFERENCE         Float?
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model WMS_Journal_Movement_CLDets {
+  ITEMID                String?   @db.NVarChar(Max)
+  ITEMNAME              String?   @db.NVarChar(Max)
+  QTY                   Float?
+  LEDGERACCOUNTIDOFFSET String?   @db.NVarChar(Max)
+  JOURNALID             String?   @db.NVarChar(Max)
+  TRANSDATE             DateTime? @db.DateTime
+  INVENTSITEID          String?   @db.NVarChar(Max)
+  INVENTLOCATIONID      String?   @db.NVarChar(Max)
+  CONFIGID              String?   @db.NVarChar(Max)
+  WMSLOCATIONID         String?   @db.NVarChar(Max)
+  TRXDATETIME           DateTime? @db.DateTime
+  TRXUSERIDASSIGNED     String?   @db.NVarChar(20)
+  TRXUSERIDASSIGNEDBY   String?   @db.NVarChar(20)
+  ITEMSERIALNO          String?   @db.VarChar(200)
+  QTYSCANNED            Float?
+  QTYDIFFERENCE         Float?
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model WMS_Journal_ProfitLost_CL {
+  ITEMID              String?   @db.NVarChar(Max)
+  ITEMNAME            String?   @db.NVarChar(Max)
+  QTY                 Float?
+  JOURNALID           String?   @db.NVarChar(Max)
+  TRANSDATE           DateTime? @db.DateTime
+  INVENTSITEID        String?   @db.NVarChar(Max)
+  INVENTLOCATIONID    String?   @db.NVarChar(Max)
+  CONFIGID            String?   @db.NVarChar(Max)
+  WMSLOCATIONID       String?   @db.NVarChar(Max)
+  TRXDATETIME         DateTime? @db.DateTime
+  TRXUSERIDASSIGNED   String?   @db.NVarChar(20)
+  TRXUSERIDASSIGNEDBY String?   @db.NVarChar(20)
+  ITEMSERIALNO        String?   @db.VarChar(200)
+  QTYSCANNED          Float?
+  QTYDIFFERENCE       Float?
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model WMS_Journal_ProfitLost_CLDets {
+  ITEMID              String?   @db.NVarChar(Max)
+  ITEMNAME            String?   @db.NVarChar(Max)
+  QTY                 Float?
+  JOURNALID           String?   @db.NVarChar(Max)
+  TRANSDATE           DateTime? @db.DateTime
+  INVENTSITEID        String?   @db.NVarChar(Max)
+  INVENTLOCATIONID    String?   @db.NVarChar(Max)
+  CONFIGID            String?   @db.NVarChar(Max)
+  WMSLOCATIONID       String?   @db.NVarChar(Max)
+  TRXDATETIME         DateTime? @db.DateTime
+  TRXUSERIDASSIGNED   String?   @db.NVarChar(20)
+  TRXUSERIDASSIGNEDBY String?   @db.NVarChar(20)
+  ITEMSERIALNO        String?   @db.VarChar(200)
+  QTYSCANNED          Float?
+  QTYDIFFERENCE       Float?
+
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model WMS_ReturnSalesOrder_CL {
+  ITEMID           String?   @db.NVarChar(Max)
+  NAME             String?   @db.NVarChar(Max)
+  EXPECTEDRETQTY   Float?
+  SALESID          String?   @db.NVarChar(Max)
+  RETURNITEMNUM    String?   @db.NVarChar(Max)
+  INVENTSITEID     String?   @db.NVarChar(Max)
+  INVENTLOCATIONID String?   @db.NVarChar(Max)
+  CONFIGID         String?   @db.NVarChar(Max)
+  WMSLOCATIONID    String?   @db.NVarChar(Max)
+  TRXDATETIME      DateTime? @db.DateTime
+  TRXUSERID        String?   @db.NVarChar(20)
+  ITEMSERIALNO     String?   @db.VarChar(200)
+  ASSIGNEDTOUSERID String?   @db.VarChar(100)
+
+  @@ignore
+}
+
+model wms_sales_picking_list_cl_rm {
+  id                      Int                      @id(map: "PK__wms_sale__3213E83FB55B6587") @default(autoincrement())
+  assign_to_userid        Int?
+  product_name            String?                  @db.NVarChar(Max)
+  quantity                Int?
+  productid               Int?
+  job_order_number        String?                  @db.NVarChar(255)
+  transaction_date        DateTime?                @db.DateTime
+  created                 DateTime?                @default(now(), map: "DF__wms_sales__creat__40C49C62") @db.DateTime
+  vendor_id               Int?
+  supplier_internal_users supplier_internal_users? @relation(fields: [assign_to_userid], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_AssignToUser")
+  vendors                 vendors?                 @relation(fields: [vendor_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_Vendor")
+}
+
+model WMS_Sales_PickingList_CL {
+  id                       Int                      @id(map: "PK__WMS_Sale__3213E83F705AE348") @default(autoincrement())
+  po_detail_id             Int
+  po_header_id             Int
+  assign_to_user_id        Int?
+  vendor_id                Int?
+  supplier_internal_users  supplier_internal_users? @relation(fields: [assign_to_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK__WMS_Sales__assig__3CF40B7E")
+  tblPODetailsFromCustomer tblPODetailsFromCustomer @relation(fields: [po_detail_id], references: [po_detail_id], onUpdate: NoAction, map: "FK__WMS_Sales__po_de__3B0BC30C")
+  tblPOHeaderFromCustomer  tblPOHeaderFromCustomer  @relation(fields: [po_header_id], references: [po_header_id], onUpdate: NoAction, map: "FK__WMS_Sales__po_he__3BFFE745")
+  vendors                  vendors?                 @relation(fields: [vendor_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK__WMS_Sales__vendo__3DE82FB7")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model WMS_Sales_PickingList_CL_old_ {
+  PICKINGROUTEID   String?   @db.NVarChar(10)
+  INVENTLOCATIONID String?   @db.NVarChar(10)
+  CONFIGID         String?   @db.NVarChar(50)
+  ITEMID           String    @db.NVarChar(20)
+  ITEMNAME         String?   @db.NVarChar(60)
+  QTY              Decimal   @db.Decimal(28, 12)
+  CUSTOMER         String    @db.NVarChar(20)
+  DLVDATE          DateTime? @db.DateTime
+  TRANSREFID       String?   @db.NVarChar(20)
+  EXPEDITIONSTATUS Int?
+  DATETIMEASSIGNED DateTime? @db.DateTime
+  ASSIGNEDTOUSERID Int?
+  PICKSTATUS       String?   @db.NChar(20)
+  QTYPICKED        Decimal?  @db.Decimal(28, 12)
+  WMSLOCATIONID    String?   @db.NVarChar(10)
+
+  @@map("WMS_Sales_PickingList_CL(old)")
+  @@ignore
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model WMS_TruckMaster {
+  PlateNo                   String? @db.NVarChar(15)
+  BarcodeSerialNumber       String? @db.NVarChar(100)
+  TransportationCompanyName String? @db.NVarChar(100)
+
+  @@ignore
+}

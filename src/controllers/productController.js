@@ -1,4 +1,4 @@
-const prisma = require('../models');
+const { gtrackDB, gs1DB } = require('../models');
 
 /**
  * Helper function to validate barcode format
@@ -304,8 +304,9 @@ exports.getAllProducts = async (req, res) => {
         whereConditions.AND.push({ user_id: user_id });
       }
       
-      // Fetch products matching either productId OR user_id
-      products = await prisma.Product.findMany({
+      // Fetch products matching both productId AND user_id
+      // Products are in GTRACKDB
+      products = await gtrackDB.Product.findMany({
         where: whereConditions
       });
       
@@ -323,16 +324,15 @@ exports.getAllProducts = async (req, res) => {
       const pageSize = parseInt(req.query.pageSize) || 10;
       const skip = (page - 1) * pageSize;
       
-      // Get total count for pagination
-      totalCount = await prisma.Product.count({
+      // Get total count for pagination from GTRACKDB
+      totalCount = await gtrackDB.Product.count({
         where: {
           deleted_at: null
         }
       });
       
-      // Fetch paginated products
-      //here also sort into descending order of created_at
-      products = await prisma.Product.findMany({
+      // Fetch paginated products from GTRACKDB
+      products = await gtrackDB.Product.findMany({
         where: {
           deleted_at: null
         },
@@ -349,8 +349,8 @@ exports.getAllProducts = async (req, res) => {
     const unitCodes = products.map(p => p.unit).filter(Boolean);
     const gpcCodes = products.map(p => p.gpc).filter(Boolean);
     
-    // Fetch brands
-    const brands = await prisma.Brand.findMany({
+    // Fetch brands from GS1DB
+    const brands = await gs1DB.Brand.findMany({
       where: {
         name: {
           in: brandNames
@@ -358,8 +358,8 @@ exports.getAllProducts = async (req, res) => {
       }
     });
     
-    // Fetch units
-    const units = await prisma.Unit.findMany({
+    // Fetch units from GS1DB
+    const units = await gs1DB.Unit.findMany({
       where: {
         unit_code: {
           in: unitCodes
@@ -367,11 +367,11 @@ exports.getAllProducts = async (req, res) => {
       }
     });
     
-    // Fetch GPC classes if the table exists
+    // Fetch GPC classes from GS1DB if the table exists
     let gpcClasses = [];
     try {
-      // Try to find GPC classes using the code from products
-      gpcClasses = await prisma.$queryRaw`
+      // Try to find GPC classes using the code from products in GS1DB
+      gpcClasses = await gs1DB.$queryRaw`
         SELECT * FROM gpc_classes 
         WHERE class_code IN (${gpcCodes.join(',')}) OR id IN (${gpcCodes.join(',')})
       `;
