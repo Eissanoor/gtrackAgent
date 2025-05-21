@@ -335,10 +335,10 @@ function parseGPC(gpcString) {
  * @returns {Object} - Enhanced unit info
  */
 function parseUnit(unitString, unitData) {
-  if (!unitString) return { code: null, name: null, type: null };
+  if (!unitString) return { code: null, name: null, type: null, id: null, status: null, created_at: null, updated_at: null };
   
   const unitCode = unitString.trim();
-  let unitName = unitData && unitData.unit_name ? unitData.unit_name : null;
+  let unitName = unitData && unitData.unit_code ? unitData.unit_code : null;
   const unitType = inferUnitType({ unit_code: unitCode, unit_name: unitName });
   
   // Derive full unit name if missing
@@ -355,10 +355,12 @@ function parseUnit(unitString, unitData) {
     }
   }
   
+  // Return all unit fields from the database plus the inferred type
   return {
+    id: unitData ? unitData.id : null,
     code: unitCode,
     name: unitName,
-    type: unitType
+   
   };
 }
 
@@ -657,7 +659,7 @@ exports.getAllProducts = async (req, res) => {
     const verifiedProducts = products.map(product => {
       // Look up the corresponding brand, unit, and GPC data
       const brandData = product.BrandName ? brandLookup[product.BrandName] : null;
-      const unitData = product.unit ? unitLookup[product.unit] : null;
+      const unitData = product.unit ? unitLookup[product.unit.trim()] : null;
       
       // Get the actual GPC data from our lookup
       const gpcData = product.gpc ? gpcLookup[product.gpc] : null;
@@ -665,6 +667,15 @@ exports.getAllProducts = async (req, res) => {
       // Parse GPC and unit data
       const parsedGPC = parseGPC(product.gpc);
       const parsedUnit = parseUnit(product.unit, unitData);
+      
+      // Enhanced product with parsed data
+      const enhancedProduct = {
+        ...product,
+        parsedData: {
+          gpc: parsedGPC,
+          unit: parsedUnit
+        }
+      };
       
       // Initialize verification object with AI analysis data
       const verification = {
@@ -675,15 +686,6 @@ exports.getAllProducts = async (req, res) => {
         issues: [],           // List of identified issues
         missingFields: [],    // List of missing fields
         aiSuggestions: []      // AI suggestions for improvement
-      };
-      
-      // Enhanced product with parsed data
-      const enhancedProduct = {
-        ...product,
-        parsedData: {
-          gpc: parsedGPC,
-          unit: parsedUnit
-        }
       };
       
       // RULE 1: Check for required fields (front_image, BrandName, gpc, unit)

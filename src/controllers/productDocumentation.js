@@ -30,6 +30,10 @@
  * @apiSuccess {String} data.parsedData.unit.code Unit code (e.g., 'KG', 'LTR')
  * @apiSuccess {String} data.parsedData.unit.name Full unit name (e.g., 'Kilogram', 'Liter')
  * @apiSuccess {String} data.parsedData.unit.type Unit type (e.g., 'weight', 'volume', 'quantity')
+ * @apiSuccess {String} data.parsedData.unit.id Unit ID in the database (if available)
+ * @apiSuccess {String} data.parsedData.unit.status Unit status (if available)
+ * @apiSuccess {String} data.parsedData.unit.created_at Unit creation date (if available)
+ * @apiSuccess {String} data.parsedData.unit.updated_at Unit last update date (if available)
  * 
  * @apiSuccess {Object} data.verification AI-based verification results
  * @apiSuccess {Boolean} data.verification.isValid Whether the product data is valid
@@ -63,7 +67,11 @@
  *           "unit": {
  *             "code": "LTR",
  *             "name": "Liter",
- *             "type": "volume"
+ *             "type": "volume",
+ *             "id": "123",
+ *             "status": "1",
+ *             "created_at": "2023-01-15T10:30:00.000Z",
+ *             "updated_at": "2023-05-20T14:45:00.000Z"
  *           }
  *         },
  *         "verification": {
