@@ -363,6 +363,137 @@ function parseUnit(unitString, unitData) {
 }
 
 /**
+ * Checks if the GPC and unit are compatible with each other
+ * @param {string} gpcString - The GPC string or code
+ * @param {string} unitCode - The unit code
+ * @param {string} unitType - The type of unit (weight, volume, quantity)
+ * @returns {Object} - Compatibility result with status and reason
+ */
+function checkGpcUnitCompatibility(gpcString, unitCode, unitType) {
+  if (!gpcString || !unitCode || !unitType) {
+    return { compatible: true, reason: null }; // Not enough info to determine incompatibility
+  }
+  
+  const gpcLower = gpcString.toLowerCase();
+  const unitLower = unitCode.toLowerCase();
+  
+  // Extract GPC code and description if available
+  let gpcCode = null;
+  let gpcDescription = '';
+  
+  if (gpcLower.includes('-')) {
+    const parts = gpcLower.split('-');
+    gpcCode = parts[0].trim();
+    gpcDescription = parts.slice(1).join('-').trim();
+  } else {
+    gpcDescription = gpcLower;
+  }
+  
+  // Define category-unit type mappings
+  const categoryUnitMap = {
+    // Liquids should use volume units
+    liquid: {
+      expectedType: 'volume',
+      keywords: ['liquid', 'oil', 'beverage', 'drink', 'fluid', 'juice', 'water', 'milk', 
+                'sauce', 'syrup', 'lubricant', 'solvent', 'cream', 'fuel'],
+      recommendedUnits: ['L', 'ML', 'CL', 'LTR', 'LITER', 'GAL', 'OZ', 'FLOZ']
+    },
+    
+    // Solids and powders should use weight units
+    solid: {
+      expectedType: 'weight',
+      keywords: ['powder', 'solid', 'grain', 'food', 'flour', 'rice', 'sugar', 'salt', 
+                'cereal', 'coffee', 'spice', 'detergent', 'soap', 'chemical'],
+      recommendedUnits: ['KG', 'G', 'MG', 'LB', 'OZ', 'TON']
+    },
+    
+    // Discrete items should use quantity units
+    item: {
+      expectedType: 'quantity',
+      keywords: ['device', 'electronic', 'appliance', 'equipment', 'apparatus', 
+                'phone', 'computer', 'machine', 'tool', 'furniture', 'toy', 'game',
+                'clothing', 'garment', 'shoe', 'accessory'],
+      recommendedUnits: ['PC', 'EA', 'UNIT', 'SET', 'PAIR', 'PCS', 'EACH']
+    },
+    
+    // Special case for fabric, textiles, cables
+    length: {
+      expectedType: 'length',
+      keywords: ['fabric', 'textile', 'cloth', 'cable', 'wire', 'rope', 'thread', 'yarn', 'ribbon'],
+      recommendedUnits: ['M', 'CM', 'MM', 'FT', 'IN', 'YD']
+    },
+    
+    // Special case for area-based products
+    area: {
+      expectedType: 'area',
+      keywords: ['carpet', 'rug', 'tile', 'panel', 'board', 'sheet', 'field', 'land'],
+      recommendedUnits: ['M2', 'SQM', 'SQFT', 'ACRE', 'HA']
+    }
+  };
+  
+  // Determine product category from GPC
+  let detectedCategory = null;
+  let highestMatchCount = 0;
+  
+  for (const [category, data] of Object.entries(categoryUnitMap)) {
+    // Count how many keywords match
+    const matchCount = data.keywords.filter(keyword => 
+      gpcDescription.includes(keyword)
+    ).length;
+    
+    if (matchCount > highestMatchCount) {
+      highestMatchCount = matchCount;
+      detectedCategory = category;
+    }
+  }
+  
+  // If we detected a category and the unit type doesn't match
+  if (detectedCategory && highestMatchCount > 0) {
+    const categoryData = categoryUnitMap[detectedCategory];
+    
+    if (unitType !== categoryData.expectedType) {
+      return {
+        compatible: false,
+        reason: `GPC indicates a ${detectedCategory} product (${gpcDescription}) but unit is ${unitType} (${unitCode}). ${detectedCategory.charAt(0).toUpperCase() + detectedCategory.slice(1)} products should use ${categoryData.expectedType} units like ${categoryData.recommendedUnits.slice(0, 3).join(', ')}.`,
+        recommendedUnits: categoryData.recommendedUnits
+      };
+    }
+  }
+  
+  // Special case checks
+  
+  // 1. Oil in product name/GPC but not using volume units
+  if ((gpcDescription.includes('oil') || gpcDescription.includes('lubricant')) && unitType !== 'volume') {
+    return {
+      compatible: false,
+      reason: `Oil products must use volume units like liters (L/LTR) or milliliters (ML), but unit is ${unitType} (${unitCode}).`,
+      recommendedUnits: ['L', 'LTR', 'ML']
+    };
+  }
+  
+  // 2. Washing powder with non-weight units
+  if ((gpcDescription.includes('washing powder') || gpcDescription.includes('detergent powder')) && unitType !== 'weight') {
+    return {
+      compatible: false,
+      reason: `Washing/detergent powder products must use weight units like kilograms (KG) or grams (G), but unit is ${unitType} (${unitCode}).`,
+      recommendedUnits: ['KG', 'G']
+    };
+  }
+  
+  // 3. Incompatible unit type for product type
+  if (unitType === 'volume' && gpcDescription.includes('clothing')) {
+    return {
+      compatible: false,
+      reason: `Clothing products cannot use volume units (${unitCode}). They should use quantity units like piece (PC) or each (EA).`,
+      recommendedUnits: ['PC', 'EA', 'UNIT', 'PAIR']
+    };
+  }
+  
+  // No incompatibility detected
+  return { compatible: true, reason: null };
+}
+
+/**
  * Validate product relationship between brand, unit, and GCP.
  * This function acts as an AI agent to verify if the combinations make sense.
  * The function automatically fetches product data and analyzes if the relationships are valid.
@@ -626,6 +757,32 @@ exports.getAllProducts = async (req, res) => {
           suggestion: 'Specify the appropriate unit of measurement for your product (e.g., kg, liter, piece). The unit should match the physical characteristics of your product.',
           importance: 'Critical'
         });
+      }
+      
+      // Additional validation for GPC and unit compatibility - run early in the validation process
+      if (product.gpc && product.unit && parsedUnit.type) {
+        const compatibilityResult = checkGpcUnitCompatibility(
+          product.gpc,
+          product.unit,
+          parsedUnit.type
+        );
+        
+        if (!compatibilityResult.compatible) {
+          verification.isValid = false;
+          verification.verificationStatus = 'unverified';
+          verification.issues.push({
+            rule: 'GPC-Unit Compatibility',
+            severity: 'high',
+            message: compatibilityResult.reason
+          });
+          
+          // Add AI suggestion for incompatible GPC and unit
+          verification.aiSuggestions.push({
+            field: 'unit',
+            suggestion: `Your product with GPC "${product.gpc}" requires a different unit of measurement. ${compatibilityResult.reason}`,
+            importance: 'High'
+          });
+        }
       }
       
       // RULE 2: Check semantic relationship between BrandName and GPC
