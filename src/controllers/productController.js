@@ -110,6 +110,169 @@ function inferUnitType(unitData) {
 }
 
 /**
+ * Advanced function to classify product type based on name, brand and GPC
+ * Uses NLP-inspired techniques to identify product categories
+ */
+function classifyProductType(productName, brandName, gpcString) {
+  // Convert to lowercase for consistent processing
+  const productNameLower = (productName || '').toLowerCase();
+  const brandNameLower = (brandName || '').toLowerCase();
+  const gpcLower = (gpcString || '').toLowerCase();
+  
+  // Combined text for analysis
+  const combinedText = `${productNameLower} ${brandNameLower} ${gpcLower}`;
+  
+  // Define category patterns with keywords and weights
+  const categoryPatterns = [
+    {
+      category: 'cleaning_product',
+      keywords: ['detergent', 'washing powder', 'cleaner', 'soap', 'laundry', 'bleach', 'softener', 'stain remover', 'dishwasher'],
+      weight: 1.0
+    },
+    {
+      category: 'food_product',
+      keywords: ['food', 'edible', 'snack', 'meal', 'nutrition', 'dietary', 'eat', 'cook', 'bake', 'breakfast', 'dinner', 'lunch', 'vegetable', 'fruit', 'meat'],
+      weight: 1.0
+    },
+    {
+      category: 'beverage_product',
+      keywords: ['drink', 'beverage', 'water', 'juice', 'soda', 'milk', 'coffee', 'tea', 'alcohol', 'wine', 'beer', 'liquor', 'cocktail'],
+      weight: 1.0
+    },
+    {
+      category: 'oil_product',
+      keywords: ['oil', 'lubricant', 'petroleum', 'engine oil', 'motor oil', 'fuel', 'gas', 'diesel', 'kerosene', 'petroleum'],
+      weight: 1.0
+    },
+    {
+      category: 'personal_care',
+      keywords: ['shampoo', 'conditioner', 'lotion', 'cream', 'deodorant', 'perfume', 'cologne', 'toothpaste', 'mouthwash', 'makeup', 'cosmetic'],
+      weight: 1.0
+    },
+    {
+      category: 'electronic_product',
+      keywords: ['electronic', 'device', 'computer', 'laptop', 'phone', 'smartphone', 'tablet', 'tv', 'television', 'appliance', 'gadget'],
+      weight: 1.0
+    },
+    {
+      category: 'clothing_product',
+      keywords: ['clothing', 'apparel', 'wear', 'dress', 'shirt', 'pant', 'jean', 'sock', 'underwear', 'jacket', 'coat', 'shoe'],
+      weight: 1.0
+    },
+    {
+      category: 'household_product',
+      keywords: ['household', 'furniture', 'decor', 'kitchen', 'bathroom', 'bedroom', 'living room', 'table', 'chair', 'bed', 'sofa'],
+      weight: 1.0
+    }
+  ];
+  
+  // Scoring for each category
+  const scores = {};
+  for (const pattern of categoryPatterns) {
+    let score = 0;
+    // Count keyword occurrences
+    for (const keyword of pattern.keywords) {
+      if (combinedText.includes(keyword)) {
+        score += pattern.weight;
+        // Add bonus for exact matches
+        if (productNameLower.includes(keyword)) {
+          score += 0.5; // Higher weight for product name matches
+        }
+      }
+    }
+    if (score > 0) {
+      scores[pattern.category] = score;
+    }
+  }
+  
+  // Special case rules
+  // Washing powder detection
+  if (productNameLower.includes('wash') && 
+      (productNameLower.includes('powder') || 
+       productNameLower.includes('detergent') || 
+       productNameLower.includes('soap'))) {
+    scores['cleaning_product'] = (scores['cleaning_product'] || 0) + 2;
+  }
+  
+  // Return the category with the highest score, or null if no match
+  let highestCategory = null;
+  let highestScore = 0;
+  
+  for (const [category, score] of Object.entries(scores)) {
+    if (score > highestScore) {
+      highestCategory = category;
+      highestScore = score;
+    }
+  }
+  
+  return {
+    category: highestCategory,
+    confidence: highestScore > 0 ? Math.min(highestScore / 3 * 100, 100) : 0,
+    scores
+  };
+}
+
+/**
+ * Get recommended unit types based on product category
+ */
+function getRecommendedUnits(productCategory) {
+  const unitRecommendations = {
+    'cleaning_product': {
+      primaryType: 'weight',
+      units: ['KG', 'G', 'MG', 'LB', 'OZ'],
+      alternateType: 'volume',
+      alternateUnits: ['L', 'ML', 'GAL', 'FL OZ'],
+      explanation: 'Cleaning products like washing powders should use weight units (kg, g) for powders and volume units (L, ml) for liquids'
+    },
+    'food_product': {
+      primaryType: 'weight',
+      units: ['KG', 'G', 'MG', 'LB', 'OZ'],
+      alternateType: 'volume',
+      alternateUnits: ['L', 'ML'],
+      explanation: 'Food products typically use weight units (kg, g) or volume units (L, ml) depending on their form'
+    },
+    'beverage_product': {
+      primaryType: 'volume',
+      units: ['L', 'ML', 'GAL', 'FL OZ'],
+      explanation: 'Beverages should use volume units (L, ml, fl oz)'
+    },
+    'oil_product': {
+      primaryType: 'volume',
+      units: ['L', 'ML', 'GAL', 'FL OZ'],
+      explanation: 'Oil products should use volume units (L, ml, fl oz)'
+    },
+    'personal_care': {
+      primaryType: 'weight',
+      units: ['G', 'MG', 'OZ'],
+      alternateType: 'volume',
+      alternateUnits: ['ML', 'FL OZ'],
+      explanation: 'Personal care products use weight units (g, oz) for solids and volume units (ml, fl oz) for liquids'
+    },
+    'electronic_product': {
+      primaryType: 'quantity',
+      units: ['PC', 'EA', 'UNIT', 'SET'],
+      explanation: 'Electronic products typically use quantity units (piece, each, unit)'
+    },
+    'clothing_product': {
+      primaryType: 'quantity',
+      units: ['PC', 'EA', 'UNIT', 'SET'],
+      explanation: 'Clothing items typically use quantity units (piece, each, unit)'
+    },
+    'household_product': {
+      primaryType: 'quantity',
+      units: ['PC', 'EA', 'UNIT', 'SET'],
+      explanation: 'Household items typically use quantity units (piece, each, unit)'
+    }
+  };
+  
+  return unitRecommendations[productCategory] || {
+    primaryType: 'unknown',
+    units: ['PC', 'KG', 'L'],
+    explanation: 'Unable to determine appropriate unit type for this product category'
+  };
+}
+
+/**
  * Validate product relationship between brand, unit, and GCP.
  * This function acts as an AI agent to verify if the combinations make sense.
  * The function automatically fetches product data and analyzes if the relationships are valid.
@@ -333,74 +496,125 @@ exports.getAllProducts = async (req, res) => {
         const brandNameLower = product.BrandName.toLowerCase();
         const gpcLower = product.gpc.toLowerCase();
         
-        // Keywords from product name and brand
-        const productKeywords = [...productNameLower.split(' '), ...brandNameLower.split(' ')];
+        // Use advanced product classification
+        const productClassification = classifyProductType(
+          product.productnameenglish,
+          product.BrandName,
+          product.gpc
+        );
         
-        // Define common categories for semantic analysis
-        const categories = {
-          'oil': ['oil', 'lubricant', 'petroleum', 'liquid', 'fluid', 'engine'],
-          'food': ['food', 'edible', 'consumable', 'nutrition', 'grocery', 'meal', 'snack'],
-          'beverage': ['drink', 'water', 'juice', 'soda', 'beverage', 'liquid'],
-          'electronics': ['device', 'gadget', 'tech', 'digital', 'electronic', 'appliance'],
-          'clothing': ['apparel', 'garment', 'wear', 'fashion', 'textile', 'cloth'],
-          'chemical': ['cleaner', 'solution', 'compound', 'mixture', 'solvent', 'chemical'],
-          'industrial': ['industrial', 'business', 'machinery', 'equipment', 'tool'],
-          'automotive': ['car', 'auto', 'vehicle', 'engine', 'motor']
-        };
+        // Store the classification for later use
+        const detectedCategory = productClassification.category;
+        const classificationConfidence = productClassification.confidence;
         
-        // Detect product category from product name and brand name
-        let detectedProductCategories = [];
-        for (const [category, keywords] of Object.entries(categories)) {
-          if (keywords.some(keyword => 
-            productNameLower.includes(keyword) || 
-            brandNameLower.includes(keyword))) {
-            detectedProductCategories.push(category);
+        // If no category detected or low confidence, use the existing category detection
+        if (!detectedCategory || classificationConfidence < 50) {
+          // Keywords from product name and brand
+          const productKeywords = [...productNameLower.split(' '), ...brandNameLower.split(' ')];
+          
+          // Define common categories for semantic analysis
+          const categories = {
+            'oil': ['oil', 'lubricant', 'petroleum', 'liquid', 'fluid', 'engine'],
+            'food': ['food', 'edible', 'consumable', 'nutrition', 'grocery', 'meal', 'snack'],
+            'beverage': ['drink', 'water', 'juice', 'soda', 'beverage', 'liquid'],
+            'electronics': ['device', 'gadget', 'tech', 'digital', 'electronic', 'appliance'],
+            'clothing': ['apparel', 'garment', 'wear', 'fashion', 'textile', 'cloth'],
+            'chemical': ['cleaner', 'solution', 'compound', 'mixture', 'solvent', 'chemical', 'washing powder', 'detergent'],
+            'industrial': ['industrial', 'business', 'machinery', 'equipment', 'tool'],
+            'automotive': ['car', 'auto', 'vehicle', 'engine', 'motor']
+          };
+          
+          // Detect product category from product name and brand name
+          let detectedProductCategories = [];
+          for (const [category, keywords] of Object.entries(categories)) {
+            if (keywords.some(keyword => 
+              productNameLower.includes(keyword) || 
+              brandNameLower.includes(keyword))) {
+              detectedProductCategories.push(category);
+            }
           }
-        }
-        
-        // Detect GPC category
-        let detectedGpcCategories = [];
-        for (const [category, keywords] of Object.entries(categories)) {
-          if (keywords.some(keyword => gpcLower.includes(keyword))) {
-            detectedGpcCategories.push(category);
+          
+          // Detect GPC category
+          let detectedGpcCategories = [];
+          for (const [category, keywords] of Object.entries(categories)) {
+            if (keywords.some(keyword => gpcLower.includes(keyword))) {
+              detectedGpcCategories.push(category);
+            }
           }
-        }
-        
-        // Check for mismatches
-        const hasMatchingCategory = detectedProductCategories.some(cat => 
-          detectedGpcCategories.includes(cat) || getRelatedTerms(cat, detectedGpcCategories.join(' ')).length > 0);
-        
-        // Special case for oil products (because the example is oil-related)
-        const isOilProduct = brandNameLower.includes('oil') || productNameLower.includes('oil');
-        const isOilGpc = gpcLower.includes('oil') || gpcLower.includes('engine') || gpcLower.includes('lubricant');
-        
-        if (detectedProductCategories.length > 0 && detectedGpcCategories.length > 0 && !hasMatchingCategory) {
-          // If oil product special case, do additional check
-          if (!(isOilProduct && isOilGpc)) {
+          
+          // Check for mismatches
+          const hasMatchingCategory = detectedProductCategories.some(cat => 
+            detectedGpcCategories.includes(cat) || getRelatedTerms(cat, detectedGpcCategories.join(' ')).length > 0);
+          
+          // Special case for oil products
+          const isOilProduct = brandNameLower.includes('oil') || productNameLower.includes('oil');
+          const isOilGpc = gpcLower.includes('oil') || gpcLower.includes('engine') || gpcLower.includes('lubricant');
+          
+          if (detectedProductCategories.length > 0 && detectedGpcCategories.length > 0 && !hasMatchingCategory) {
+            // If oil product special case, do additional check
+            if (!(isOilProduct && isOilGpc)) {
+              verification.isValid = false;
+              verification.verificationStatus = 'unverified';
+              verification.issues.push({
+                rule: 'Category Match',
+                severity: 'high',
+                message: `Product category (${detectedProductCategories.join(', ')}) does not match GPC category (${detectedGpcCategories.join(', ')})`
+              });
+              
+              // Add professional AI suggestion for category mismatch
+              let recommendedGpc = '';
+              if (detectedProductCategories.includes('oil')) {
+                recommendedGpc = 'lubricants or engine oils';
+              } else if (detectedProductCategories.includes('food')) {
+                recommendedGpc = 'food items or consumables';
+              } else if (detectedProductCategories.includes('beverage')) {
+                recommendedGpc = 'beverages or drinks';
+              } else if (detectedProductCategories.includes('electronics')) {
+                recommendedGpc = 'electronic appliances or devices';
+              } else if (detectedProductCategories.includes('chemical')) {
+                recommendedGpc = 'cleaning products or detergents';
+              }
+              
+              verification.aiSuggestions.push({
+                field: 'gpc',
+                suggestion: `There appears to be a mismatch between your product category and GPC classification. Based on your product "${product.productnameenglish}" and brand "${product.BrandName}", we suggest using a GPC related to ${recommendedGpc}. This ensures accurate product categorization and improves searchability.`,
+                importance: 'High'
+              });
+            }
+          }
+        } else {
+          // Use the AI classification result to check GPC consistency
+          const gpcConsistent = gpcLower.includes(detectedCategory.replace('_product', '')) ||
+                               gpcLower.includes(detectedCategory.replace('_', ' '));
+          
+          if (!gpcConsistent && classificationConfidence > 70) {
             verification.isValid = false;
             verification.verificationStatus = 'unverified';
             verification.issues.push({
               rule: 'Category Match',
               severity: 'high',
-              message: `Product category (${detectedProductCategories.join(', ')}) does not match GPC category (${detectedGpcCategories.join(', ')})`
+              message: `Product appears to be a ${detectedCategory.replace('_', ' ')} but GPC doesn't reflect this category`
             });
             
-            // Add professional AI suggestion for category mismatch
-            let recommendedGpc = '';
-            if (detectedProductCategories.includes('oil')) {
-              recommendedGpc = 'lubricants or engine oils';
-            } else if (detectedProductCategories.includes('food')) {
-              recommendedGpc = 'food items or consumables';
-            } else if (detectedProductCategories.includes('beverage')) {
-              recommendedGpc = 'beverages or drinks';
-            } else if (detectedProductCategories.includes('electronics')) {
-              recommendedGpc = 'electronic appliances or devices';
+            // Get recommended GPC description based on product type
+            let recommendedGpcDesc = '';
+            if (detectedCategory === 'cleaning_product') {
+              recommendedGpcDesc = 'cleaning products, detergents, or washing agents';
+            } else if (detectedCategory === 'food_product') {
+              recommendedGpcDesc = 'food items or consumables';
+            } else if (detectedCategory === 'beverage_product') {
+              recommendedGpcDesc = 'beverages or drinks';
+            } else if (detectedCategory === 'oil_product') {
+              recommendedGpcDesc = 'lubricants or engine oils';
+            } else {
+              recommendedGpcDesc = detectedCategory.replace('_', ' ') + 's';
             }
             
             verification.aiSuggestions.push({
               field: 'gpc',
-              suggestion: `There appears to be a mismatch between your product category and GPC classification. Based on your product "${product.productnameenglish}" and brand "${product.BrandName}", we suggest using a GPC related to ${recommendedGpc}. This ensures accurate product categorization and improves searchability.`,
-              importance: 'High'
+              suggestion: `Our AI has identified your product "${product.productnameenglish}" as a ${detectedCategory.replace('_', ' ')}. Please select a GPC classification related to ${recommendedGpcDesc} for more accurate categorization. This will improve product discovery and ensure proper classification.`,
+              importance: 'High',
+              confidence: classificationConfidence.toFixed(0) + '%'
             });
           }
         }
@@ -413,84 +627,161 @@ exports.getAllProducts = async (req, res) => {
         const productNameLower = product.productnameenglish ? product.productnameenglish.toLowerCase() : '';
         const brandNameLower = product.BrandName.toLowerCase();
         
-        // Determine the product type based on name/brand
-        const isLiquidProduct = ['oil', 'water', 'juice', 'fluid', 'liquid', 'drink', 'beverage'].some(term => 
-          productNameLower.includes(term) || brandNameLower.includes(term));
-        
-        const isWeightProduct = ['food', 'grain', 'powder', 'solid', 'bulk'].some(term => 
-          productNameLower.includes(term) || brandNameLower.includes(term));
-        
-        const isCountProduct = ['piece', 'count', 'item', 'electronic', 'device', 'gadget'].some(term => 
-          productNameLower.includes(term) || brandNameLower.includes(term));
+        // Use advanced product classification
+        const productClassification = classifyProductType(
+          product.productnameenglish,
+          product.BrandName,
+          product.gpc
+        );
         
         // Get unit type
         const unitType = inferUnitType(unitData);
         
-        // Check for mismatches - similar logic to existing code but simplified
-        if (isLiquidProduct && unitType !== 'volume') {
-          verification.isValid = false;
-          verification.verificationStatus = 'unverified';
-          verification.issues.push({
-            rule: 'Unit Compatibility',
-            severity: 'high',
-            message: `A liquid product should use volume units (like liter), but uses ${unitType} unit (${unitName})`
-          });
+        // If we have a confident classification, use it for unit validation
+        if (productClassification.category && productClassification.confidence >= 60) {
+          const unitRecommendations = getRecommendedUnits(productClassification.category);
           
-          verification.aiSuggestions.push({
-            field: 'unit',
-            suggestion: `Your product "${product.productnameenglish}" appears to be a liquid product but is using ${unitType} units. For liquid products, we recommend using volume units such as liters (L), milliliters (mL), fluid ounces (fl oz), or gallons. This ensures accurate quantity representation and improves consumer understanding.`,
-            importance: 'High',
-            recommended_units: ['L', 'ML', 'FL OZ']
-          });
-        } else if (isWeightProduct && unitType !== 'weight') {
-          verification.isValid = false;
-          verification.verificationStatus = 'unverified';
-          verification.issues.push({
-            rule: 'Unit Compatibility',
-            severity: 'high',
-            message: `A weight-based product should use weight units (like kg), but uses ${unitType} unit (${unitName})`
-          });
+          // Check if current unit matches recommended primary or alternate type
+          const matchesPrimaryType = unitType === unitRecommendations.primaryType;
+          const matchesAlternateType = unitRecommendations.alternateType && unitType === unitRecommendations.alternateType;
           
-          verification.aiSuggestions.push({
-            field: 'unit',
-            suggestion: `Your product "${product.productnameenglish}" appears to be a weight-based product but is using ${unitType} units. For such products, we recommend using weight units such as kilograms (kg), grams (g), pounds (lb), or ounces (oz). This ensures accurate measurement representation and improves consumer understanding.`,
-            importance: 'High',
-            recommended_units: ['KG', 'G', 'LB', 'OZ']
-          });
-        } else if (isCountProduct && unitType !== 'quantity') {
-          verification.isValid = false;
-          verification.verificationStatus = 'unverified';
-          verification.issues.push({
-            rule: 'Unit Compatibility',
-            severity: 'high',
-            message: `A quantity-based product should use quantity units (like piece), but uses ${unitType} unit (${unitName})`
-          });
+          // If unit doesn't match either type
+          if (!matchesPrimaryType && !matchesAlternateType) {
+            verification.isValid = false;
+            verification.verificationStatus = 'unverified';
+            verification.issues.push({
+              rule: 'Unit Compatibility',
+              severity: 'high',
+              message: `${productClassification.category.replace('_', ' ')} should use ${unitRecommendations.primaryType} units, but uses ${unitType} units`
+            });
+            
+            verification.aiSuggestions.push({
+              field: 'unit',
+              suggestion: `Our AI has identified your product "${product.productnameenglish}" as a ${productClassification.category.replace('_', ' ')}. ${unitRecommendations.explanation}. Please update your unit from "${unitData.unit_name}" to an appropriate ${unitRecommendations.primaryType} unit.`,
+              importance: 'High',
+              recommended_units: unitRecommendations.units,
+              confidence: productClassification.confidence.toFixed(0) + '%'
+            });
+          }
           
-          verification.aiSuggestions.push({
-            field: 'unit',
-            suggestion: `Your product "${product.productnameenglish}" appears to be a quantity-based item but is using ${unitType} units. For such products, we recommend using quantity units such as piece, each, count, or unit. This ensures accurate quantity representation and improves consumer understanding.`,
-            importance: 'High',
-            recommended_units: ['PC', 'EA', 'CT', 'UNIT']
-          });
-        }
-        
-        // Special case for oil products from the example
-        const isOilProduct = brandNameLower.includes('oil') || productNameLower.includes('oil');
-        if (isOilProduct && !['l', 'ltr', 'litre', 'liter'].includes(unitCode)) {
-          verification.isValid = false;
-          verification.verificationStatus = 'unverified';
-          verification.issues.push({
-            rule: 'Unit Compatibility',
-            severity: 'high',
-            message: `Oil products should use volume units (like liter), but uses ${unitCode} unit`
-          });
+          // Special case for washing powder - must use weight units
+          if (productNameLower.includes('washing') && 
+              productNameLower.includes('powder') && 
+              unitType !== 'weight') {
+            verification.isValid = false;
+            verification.verificationStatus = 'unverified';
+            verification.issues.push({
+              rule: 'Unit Compatibility',
+              severity: 'high',
+              message: `Washing powder products should use weight units (like kg, g), but uses ${unitType} units`
+            });
+            
+            verification.aiSuggestions.push({
+              field: 'unit',
+              suggestion: `Your product "${product.productnameenglish}" is a washing powder which should be measured in weight units. Please use kilograms (KG) or grams (G) for accurate measurement. Using the correct unit is critical for consumer understanding and industry standards compliance.`,
+              importance: 'High',
+              recommended_units: ['KG', 'G']
+            });
+          }
+        } else {
+          // Fallback to the simpler detection logic if classification isn't confident
+          // Determine the product type based on name/brand
+          const isLiquidProduct = ['oil', 'water', 'juice', 'fluid', 'liquid', 'drink', 'beverage'].some(term => 
+            productNameLower.includes(term) || brandNameLower.includes(term));
           
-          verification.aiSuggestions.push({
-            field: 'unit',
-            suggestion: `Your product "${product.productnameenglish}" is an oil product which should be measured in volume units. Please use liters (L) or milliliters (ML) for engine oils and lubricants. Using the correct unit is critical for industry standards compliance and accurate quantity representation.`,
-            importance: 'High',
-            recommended_units: ['L', 'LTR', 'ML']
-          });
+          const isWeightProduct = ['food', 'grain', 'powder', 'solid', 'bulk', 'washing powder', 'detergent powder'].some(term => 
+            productNameLower.includes(term) || brandNameLower.includes(term));
+          
+          const isCountProduct = ['piece', 'count', 'item', 'electronic', 'device', 'gadget'].some(term => 
+            productNameLower.includes(term) || brandNameLower.includes(term));
+          
+          // Check for mismatches - similar logic to existing code but simplified
+          if (isLiquidProduct && unitType !== 'volume') {
+            verification.isValid = false;
+            verification.verificationStatus = 'unverified';
+            verification.issues.push({
+              rule: 'Unit Compatibility',
+              severity: 'high',
+              message: `A liquid product should use volume units (like liter), but uses ${unitType} unit (${unitName})`
+            });
+            
+            verification.aiSuggestions.push({
+              field: 'unit',
+              suggestion: `Your product "${product.productnameenglish}" appears to be a liquid product but is using ${unitType} units. For liquid products, we recommend using volume units such as liters (L), milliliters (mL), fluid ounces (fl oz), or gallons. This ensures accurate quantity representation and improves consumer understanding.`,
+              importance: 'High',
+              recommended_units: ['L', 'ML', 'FL OZ']
+            });
+          } else if (isWeightProduct && unitType !== 'weight') {
+            verification.isValid = false;
+            verification.verificationStatus = 'unverified';
+            verification.issues.push({
+              rule: 'Unit Compatibility',
+              severity: 'high',
+              message: `A weight-based product should use weight units (like kg), but uses ${unitType} unit (${unitName})`
+            });
+            
+            verification.aiSuggestions.push({
+              field: 'unit',
+              suggestion: `Your product "${product.productnameenglish}" appears to be a weight-based product but is using ${unitType} units. For such products, we recommend using weight units such as kilograms (kg), grams (g), pounds (lb), or ounces (oz). This ensures accurate measurement representation and improves consumer understanding.`,
+              importance: 'High',
+              recommended_units: ['KG', 'G', 'LB', 'OZ']
+            });
+          } else if (isCountProduct && unitType !== 'quantity') {
+            verification.isValid = false;
+            verification.verificationStatus = 'unverified';
+            verification.issues.push({
+              rule: 'Unit Compatibility',
+              severity: 'high',
+              message: `A quantity-based product should use quantity units (like piece), but uses ${unitType} unit (${unitName})`
+            });
+            
+            verification.aiSuggestions.push({
+              field: 'unit',
+              suggestion: `Your product "${product.productnameenglish}" appears to be a quantity-based item but is using ${unitType} units. For such products, we recommend using quantity units such as piece, each, count, or unit. This ensures accurate quantity representation and improves consumer understanding.`,
+              importance: 'High',
+              recommended_units: ['PC', 'EA', 'CT', 'UNIT']
+            });
+          }
+          
+          // Special case for oil products from the example
+          const isOilProduct = brandNameLower.includes('oil') || productNameLower.includes('oil');
+          if (isOilProduct && !['l', 'ltr', 'litre', 'liter'].includes(unitCode)) {
+            verification.isValid = false;
+            verification.verificationStatus = 'unverified';
+            verification.issues.push({
+              rule: 'Unit Compatibility',
+              severity: 'high',
+              message: `Oil products should use volume units (like liter), but uses ${unitCode} unit`
+            });
+            
+            verification.aiSuggestions.push({
+              field: 'unit',
+              suggestion: `Your product "${product.productnameenglish}" is an oil product which should be measured in volume units. Please use liters (L) or milliliters (ML) for engine oils and lubricants. Using the correct unit is critical for industry standards compliance and accurate quantity representation.`,
+              importance: 'High',
+              recommended_units: ['L', 'LTR', 'ML']
+            });
+          }
+          
+          // Special case for washing powder
+          if ((productNameLower.includes('washing') && productNameLower.includes('powder')) || 
+              (productNameLower.includes('detergent') && productNameLower.includes('powder'))) {
+            if (unitType !== 'weight') {
+              verification.isValid = false;
+              verification.verificationStatus = 'unverified';
+              verification.issues.push({
+                rule: 'Unit Compatibility',
+                severity: 'high',
+                message: `Washing powder products should use weight units (like kg, g), but uses ${unitType} units`
+              });
+              
+              verification.aiSuggestions.push({
+                field: 'unit',
+                suggestion: `Your product "${product.productnameenglish}" is a washing powder which should be measured in weight units. Please use kilograms (KG) or grams (G) for accurate measurement. Using the correct unit is critical for consumer understanding and industry standards compliance.`,
+                importance: 'High',
+                recommended_units: ['KG', 'G']
+              });
+            }
+          }
         }
       }
       
