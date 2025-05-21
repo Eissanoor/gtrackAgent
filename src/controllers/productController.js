@@ -619,11 +619,20 @@ exports.getAllProducts = async (req, res) => {
       }));
     }
     
-    // Fetch GPC classes from GS1DB if the table exists
+    // Fetch GPC classes from GS1DB
     let gpcClasses = [];
-    if (gs1DB && gs1DB.$queryRaw) {
+    if (gs1DB && gs1DB.gpc_classes) {
+      gpcClasses = await safeDbQuery(() => gs1DB.gpc_classes.findMany({
+        where: {
+          OR: [
+            { class_code: { in: gpcCodes.filter(Boolean) } },
+            { id: { in: gpcCodes.filter(Boolean).map(code => parseFloat(code)).filter(num => !isNaN(num)) } }
+          ]
+        }
+      }));
+    } else if (gs1DB && gs1DB.$queryRaw) {
       try {
-        // Try to find GPC classes using the code from products in GS1DB
+        // Fallback to raw query if Prisma model is not available
         gpcClasses = await gs1DB.$queryRaw`
           SELECT * FROM gpc_classes 
           WHERE class_code IN (${gpcCodes.join(',')}) OR id IN (${gpcCodes.join(',')})
