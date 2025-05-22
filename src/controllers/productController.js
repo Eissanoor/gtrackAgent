@@ -87,8 +87,14 @@ function inferUnitType(unitData) {
   const unitName = (unitData.unit_name || '').toLowerCase();
   const unitCode = (unitData.unit_code || '').toLowerCase();
   
+  // Rate/Speed/Time-based units
+  if (['per', 'perhour', 'persecond', 'perminute', 'ph', 'ps', 'pm', 'hz', 'rpm', 'sps', 'mps', 'fps', 'm60'].some(term => 
+      unitName.includes(term) || unitCode.includes(term))) {
+    return 'rate';
+  }
+  
   // Volume units
-  if (['l', 'ml', 'liter', 'litre', 'gallon', 'oz', 'fluid'].some(term => 
+  if (['l', 'ml', 'liter', 'litre', 'gallon', 'oz', 'fluid', 'ltr', 'fl'].some(term => 
       unitName.includes(term) || unitCode.includes(term))) {
     return 'volume';
   }
@@ -103,6 +109,13 @@ function inferUnitType(unitData) {
   if (['pc', 'piece', 'unit', 'each', 'item', 'count', 'ea'].some(term => 
       unitName.includes(term) || unitCode.includes(term))) {
     return 'quantity';
+  }
+  
+  // Length units
+  if (['m', 'cm', 'mm', 'ft', 'inch', 'yard', 'metre', 'meter'].some(term =>
+      unitName.includes(term) || unitCode.includes(term)) && 
+      !(['per', 'perhour', 'persecond'].some(term => unitName.includes(term) || unitCode.includes(term)))) {
+    return 'length';
   }
   
   // Default to quantity if unknown
@@ -196,6 +209,22 @@ function classifyProductType(productName, brandName, gpcString) {
       confidence: 0.95,
       expectedUnit: 'volume',
       explanation: 'This is an automotive oil product based on the context of engine/motor terminology'
+    },
+    // Specific engine oil detection based on viscosity grade patterns (like 0W20, 5W30, etc.)
+    {
+      condition: (text) => /\b\d+w\d+\b/i.test(text) || /\b(sae)\b.*\b\d+w\d+\b/i.test(text),
+      category: 'oil_product',
+      confidence: 0.98,
+      expectedUnit: 'volume',
+      explanation: 'This is an engine oil product based on the viscosity grade pattern (e.g., 0W20, 5W30)'
+    },
+    // API specification indicates engine oil
+    {
+      condition: (text) => /\bapi\s+(s[lpnmfg]|c[hjk])\b/i.test(text),
+      category: 'oil_product',
+      confidence: 0.98,
+      expectedUnit: 'volume',
+      explanation: 'This is an engine oil product based on API service category designation'
     },
     // If "washing" appears with "powder" or "detergent", it's a cleaning product
     {
@@ -753,10 +782,21 @@ function checkGpcUnitCompatibility(gpcString, unitCode, unitType) {
   const industrySpecificRules = [
     // Rule for automotive oils
     {
-      condition: (gpc) => /\b(engine|motor|automotive|car|vehicle)\b.*\b(oil|lubricant|fluid)\b/i.test(gpc),
+      condition: (gpc) => /\b(engine|motor|automotive|car|vehicle)\b.*\b(oil|lubricant|fluid)\b/i.test(gpc) ||
+                         /\b(api\s+[a-z]{1,2})\b/i.test(gpc) || 
+                         /\b\d+w\d+\b/i.test(gpc),
       unitType: 'volume',
       message: 'Automotive oil products must use volume units',
       recommendedUnits: ['L', 'ML', 'LTR']
+    },
+    // Explicit rule to prohibit rate units for oil products
+    {
+      condition: (gpc) => /\b(engine|motor|oil|lubricant|fluid)\b/i.test(gpc) || 
+                         /\b\d+w\d+\b/i.test(gpc) ||
+                         /\bapi\s+s[a-z]\b/i.test(gpc),
+      prohibitedUnitTypes: ['rate', 'length', 'area'],
+      message: 'Engine oil products cannot use rate/speed or length units - they must use volume units',
+      recommendedUnits: ['L', 'ML', 'LTR', 'LITER']
     },
     // Rule for washing powders
     {
@@ -791,13 +831,24 @@ function checkGpcUnitCompatibility(gpcString, unitCode, unitType) {
   // Check industry-specific rules
   for (const rule of industrySpecificRules) {
     if (rule.condition(gpcDescription)) {
-      if (unitType !== rule.unitType) {
+      if (rule.unitType && unitType !== rule.unitType) {
         return {
           compatible: false,
           reason: `${rule.message} like ${rule.recommendedUnits.join(', ')}, but unit is ${unitType} (${unitCode}).`,
           recommendedUnits: rule.recommendedUnits,
           confidence: 95,
           detectionMethod: 'industry-rule'
+        };
+      }
+      
+      // Check for explicitly prohibited unit types
+      if (rule.prohibitedUnitTypes && rule.prohibitedUnitTypes.includes(unitType)) {
+        return {
+          compatible: false,
+          reason: `${rule.message}. Current unit (${unitCode}) is a ${unitType} unit which is not appropriate.`,
+          recommendedUnits: rule.recommendedUnits,
+          confidence: 98,
+          detectionMethod: 'prohibited-unit-type'
         };
       }
     }
