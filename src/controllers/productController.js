@@ -1429,6 +1429,13 @@ exports.getAllProducts = async (req, res) => {
       // Continue without related data
     }
     
+    // Pre-fetch GPC classes for common product categories
+    const prefetchedGpcClasses = await prefetchGpcClasses();
+    
+    // Debug GPC classes table to help diagnose issues
+    const gpcClassesDebugInfo = await debugGpcClassesTable();
+    console.log('GPC Classes debug info available:', gpcClassesDebugInfo ? 'yes' : 'no');
+    
     // Fetch brands from GS1DB
     let brands = [];
     if (gs1DB && gs1DB.Brand) {
@@ -1494,7 +1501,7 @@ exports.getAllProducts = async (req, res) => {
     });
     
     // Process each product and add verification results using AI-based logic
-    const verifiedProducts = products.map(product => {
+    const verifiedProducts = await Promise.all(products.map(async product => {
       // Look up the corresponding brand, unit, and GPC data
       const brandData = product.BrandName ? brandLookup[product.BrandName] : null;
       const unitData = product.unit ? unitLookup[product.unit.trim()] : null;
@@ -1743,19 +1750,12 @@ exports.getAllProducts = async (req, res) => {
               message: `Product appears to be a ${detectedCategory.replace('_', ' ')} but GPC doesn't reflect this category`
             });
             
-            // Get recommended GPC titles based on product type
-            let recommendedGpcTitles = [];
-            if (detectedCategory === 'cleaning_product') {
-              recommendedGpcTitles = ['Laundry Detergents', 'Household Cleaning Products', 'Cleaning Agents'];
-            } else if (detectedCategory === 'food_product') {
-              recommendedGpcTitles = ['Food Items', 'Packaged Food', 'Grocery Products'];
-            } else if (detectedCategory === 'beverage_product') {
-              recommendedGpcTitles = ['Beverages', 'Drinks', 'Water - Packaged', 'Bottled Drinks'];
-            } else if (detectedCategory === 'oil_product') {
-              recommendedGpcTitles = ['Engine Oil/Engine Lubricants', 'Motor Oils', 'Automotive Lubricants', 'Vehicle Lubricants', 'Lubricating Oils'];
-            } else {
-              recommendedGpcTitles = [detectedCategory.replace('_', ' ') + 's'];
-            }
+            // Get GPC title suggestions from the database if possible
+            let recommendedGpcTitles = getDirectGpcSuggestions(
+              prefetchedGpcClasses, 
+              detectedCategory,
+              product.productnameenglish
+            );
             
             // Get the recommended GPC titles as a comma-separated string
             const gpcTitleSuggestions = recommendedGpcTitles.slice(0, 3).join(', ');
@@ -1919,7 +1919,7 @@ exports.getAllProducts = async (req, res) => {
         gpcData,         // Include the GPC data
         verification     // Include the AI verification results
       };
-    });
+    }));
     
     // Customize response based on request type (single product or paginated)
     if (productId) {
@@ -1951,4 +1951,289 @@ exports.getAllProducts = async (req, res) => {
     res.status(500).json({ success: false, message: error.message, error: 'Server error' });
   }
 };
+
+/**
+ * Helper function to fetch relevant GPC classes from the database based on keywords
+ * @param {string} category - The detected product category
+ * @returns {Promise<Array>} - Array of matching GPC class titles
+ */
+async function fetchRelevantGpcClasses(category) {
+  if (!gs1DB || !gs1DB.gpc_classes) {
+    // Return fallback suggestions if database is not available
+    return getFallbackGpcSuggestions(category);
+  }
+  
+  try {
+    // Convert category to search terms
+    const searchTerms = getCategorySearchTerms(category);
+    
+    // Build OR conditions for each search term
+    const orConditions = searchTerms.map(term => ({
+      OR: [
+        { class_title: { contains: term } },
+        { class_definition: { contains: term } }
+      ]
+    }));
+    
+    // Fetch matching GPC classes
+    const matchingClasses = await gs1DB.gpc_classes.findMany({
+      where: {
+        OR: orConditions
+      },
+      select: {
+        class_code: true,
+        class_title: true
+      },
+      take: 5 // Limit to 5 most relevant results
+    });
+    
+    // Return just the class titles
+    const classTitles = matchingClasses.map(cls => cls.class_title).filter(Boolean);
+    
+    // If no matches, return fallback suggestions
+    if (classTitles.length === 0) {
+      return getFallbackGpcSuggestions(category);
+    }
+    
+    return classTitles;
+  } catch (error) {
+    console.error('Error fetching GPC classes:', error);
+    return getFallbackGpcSuggestions(category);
+  }
+}
+
+/**
+ * Get appropriate search terms for a given product category
+ */
+function getCategorySearchTerms(category) {
+  // Map category to appropriate search terms
+  switch(category) {
+    case 'oil_product':
+      return ['engine oil', 'motor oil', 'lubricant', 'automotive oil', 'lubricating oil'];
+    case 'cleaning_product':
+      return ['detergent', 'cleaning', 'laundry', 'cleaner', 'washing powder'];
+    case 'food_product':
+      return ['food', 'edible', 'grocery', 'consumable'];
+    case 'beverage_product':
+      return ['beverage', 'drink', 'water', 'liquid refreshment'];
+    case 'electronic_product':
+      return ['electronic', 'device', 'digital', 'computer', 'appliance'];
+    case 'clothing_product':
+      return ['clothing', 'apparel', 'garment', 'wear'];
+    case 'personal_care':
+      return ['cosmetic', 'personal care', 'beauty', 'toiletry'];
+    case 'household_product':
+      return ['household', 'home', 'domestic'];
+    default:
+      return [category.replace('_', ' ')];
+  }
+}
+
+/**
+ * Get fallback GPC title suggestions when database lookup fails
+ */
+function getFallbackGpcSuggestions(category) {
+  // Fallback suggestions in case database lookup fails
+  switch(category) {
+    case 'oil_product':
+      return ['Engine Oil/Engine Lubricants', 'Motor Oils', 'Automotive Lubricants', 'Vehicle Lubricants'];
+    case 'cleaning_product':
+      return ['Laundry Detergents', 'Household Cleaning Products', 'Cleaning Agents'];
+    case 'food_product':
+      return ['Food Items', 'Packaged Food', 'Grocery Products'];
+    case 'beverage_product':
+      return ['Beverages', 'Drinks', 'Water - Packaged', 'Bottled Drinks'];
+    case 'electronic_product':
+      return ['Electronics', 'Electronic Devices', 'Consumer Electronics'];
+    case 'clothing_product':
+      return ['Clothing', 'Apparel', 'Garments'];
+    case 'personal_care':
+      return ['Personal Care Products', 'Cosmetics', 'Beauty Products'];
+    case 'household_product':
+      return ['Household Products', 'Home Goods', 'Domestic Items'];
+    default:
+      return [category.replace('_', ' ') + ' Products'];
+  }
+}
+
+/**
+ * Pre-fetch common GPC classes for different product categories 
+ * to avoid async issues in the main processing loop
+ */
+async function prefetchGpcClasses() {
+  if (!gs1DB || !gs1DB.gpc_classes) {
+    console.log('GS1DB or gpc_classes model not available');
+    return {};
+  }
+  
+  try {
+    // Define common search terms for popular categories
+    const categorySearchTerms = {
+      'oil_product': ['engine oil', 'motor oil', 'lubricant', 'automotive oil', 'engine', 'oil', 'lubricating'],
+      'beverage_product': ['beverage', 'drink', 'water', 'liquid', 'juice'],
+      'food_product': ['food', 'edible', 'grocery', 'consumable', 'snack'],
+      'cleaning_product': ['detergent', 'cleaning', 'laundry', 'cleaner', 'soap']
+    };
+    
+    const results = {};
+    
+    // Query for each category
+    for (const [category, terms] of Object.entries(categorySearchTerms)) {
+      console.log(`Fetching GPC classes for ${category} with terms: ${terms.join(', ')}`);
+      
+      try {
+        // Try using raw SQL query which might be more reliable with text search
+        const rawQuery = `
+          SELECT class_code, class_title 
+          FROM gpc_classes 
+          WHERE ${terms.map(term => `class_title LIKE '%${term}%'`).join(' OR ')}
+          LIMIT 5
+        `;
+        
+        let matchingClasses = [];
+        
+        try {
+          matchingClasses = await gs1DB.$queryRaw(rawQuery);
+          console.log(`Raw query found ${matchingClasses.length} matches for ${category}`);
+        } catch (sqlError) {
+          console.error('Raw SQL query failed:', sqlError.message);
+          
+          // Fall back to Prisma query
+          const orConditions = terms.map(term => ({
+            OR: [
+              { class_title: { contains: term } }
+            ]
+          }));
+          
+          matchingClasses = await gs1DB.gpc_classes.findMany({
+            where: {
+              OR: orConditions
+            },
+            select: {
+              class_code: true,
+              class_title: true
+            },
+            take: 5
+          });
+          
+          console.log(`Prisma query found ${matchingClasses.length} matches for ${category}`);
+        }
+        
+        // Store results
+        results[category] = matchingClasses.map(cls => cls.class_title).filter(Boolean);
+        
+        console.log(`GPC titles for ${category}:`, results[category]);
+        
+        // If no results, use fallback
+        if (!results[category] || results[category].length === 0) {
+          console.log(`No GPC classes found for ${category}, using fallback`);
+          results[category] = getFallbackGpcSuggestions(category);
+        }
+      } catch (categoryError) {
+        console.error(`Error fetching GPC classes for ${category}:`, categoryError);
+        results[category] = getFallbackGpcSuggestions(category);
+      }
+    }
+    
+    return results;
+  } catch (error) {
+    console.error('Error pre-fetching GPC classes:', error);
+    return {};
+  }
+}
+
+/**
+ * Direct GPC class lookup for product verification
+ * This should be called during product verification for more accurate suggestions
+ * @param {object} gpcClasses - The prefetched GPC classes
+ * @param {string} detectedCategory - The detected product category
+ * @param {string} productName - The product name for additional context
+ * @returns {Array} - Array of matching GPC class titles
+ */
+function getDirectGpcSuggestions(gpcClasses, detectedCategory, productName) {
+  try {
+    console.log(`Getting direct GPC suggestions for ${detectedCategory} and product "${productName}"`);
+    
+    // First check if we have pre-fetched GPC classes for this category
+    if (gpcClasses && gpcClasses[detectedCategory] && gpcClasses[detectedCategory].length > 0) {
+      console.log(`Found ${gpcClasses[detectedCategory].length} pre-fetched GPC classes for ${detectedCategory}`);
+      return gpcClasses[detectedCategory];
+    }
+    
+    // If we don't have pre-fetched classes, try to query directly if we have gs1DB available
+    if (gs1DB && gs1DB.gpc_classes) {
+      console.log(`No pre-fetched classes, attempting direct synchronous query`);
+      
+      // For direct sync access, use fallback values but log the issue
+      console.log(`Cannot perform async DB query during verification, using fallback GPC suggestions`);
+    }
+    
+    // Use fallback suggestions as a last resort
+    return getFallbackGpcSuggestions(detectedCategory);
+  } catch (error) {
+    console.error('Error getting GPC suggestions:', error);
+    return getFallbackGpcSuggestions(detectedCategory);
+  }
+}
+
+/**
+ * Debug function to verify GPC classes table structure and sample data
+ * This helps identify issues with the database connection or table schema
+ */
+async function debugGpcClassesTable() {
+  try {
+    if (!gs1DB) {
+      console.error('GS1DB connection not available for debugging');
+      return null;
+    }
+    
+    console.log('=== GPC Classes Table Debug ===');
+    
+    // Check if gpc_classes table exists and has expected structure
+    try {
+      // Try to get the first few records to check table structure
+      const sample = await gs1DB.$queryRaw`SELECT TOP 5 * FROM gpc_classes`;
+      console.log('Sample GPC classes:', sample);
+      
+      // If that works, count total records
+      const count = await gs1DB.$queryRaw`SELECT COUNT(*) as total FROM gpc_classes`;
+      console.log('Total GPC classes:', count);
+      
+      // Check if there are records with "oil" in the title (for our test case)
+      const oilSample = await gs1DB.$queryRaw`SELECT TOP 5 * FROM gpc_classes WHERE class_title LIKE '%oil%'`;
+      console.log('Sample oil-related GPC classes:', oilSample);
+      
+      return {
+        tableExists: true,
+        sampleData: sample,
+        totalCount: count,
+        oilSample: oilSample
+      };
+    } catch (error) {
+      console.error('Error querying gpc_classes table:', error.message);
+      
+      // Try alternate query syntax for different SQL dialects
+      try {
+        const sample = await gs1DB.$queryRaw`SELECT * FROM gpc_classes LIMIT 5`;
+        console.log('Sample GPC classes (alternate syntax):', sample);
+        return {
+          tableExists: true,
+          sampleData: sample,
+          alternateQueryUsed: true
+        };
+      } catch (alternateError) {
+        console.error('Error with alternate query:', alternateError.message);
+        return {
+          tableExists: false,
+          error: error.message
+        };
+      }
+    }
+  } catch (error) {
+    console.error('GPC classes debug error:', error);
+    return {
+      error: error.message
+    };
+  }
+}
 
