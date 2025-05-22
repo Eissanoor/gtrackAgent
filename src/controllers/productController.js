@@ -224,7 +224,8 @@ function classifyProductType(productName, brandName, gpcString) {
       category: 'oil_product',
       confidence: 0.98,
       expectedUnit: 'volume',
-      explanation: 'This is an engine oil product based on API service category designation'
+      explanation: 'This is an engine oil product based on API service category designation',
+      suggestedGpcTitles: ['Engine Oil/Engine Lubricants', 'Motor Oils', 'Automotive Lubricants', 'Vehicle Lubricants', 'Lubricating Oils']
     },
     // If "washing" appears with "powder" or "detergent", it's a cleaning product
     {
@@ -1742,30 +1743,34 @@ exports.getAllProducts = async (req, res) => {
               message: `Product appears to be a ${detectedCategory.replace('_', ' ')} but GPC doesn't reflect this category`
             });
             
-            // Get recommended GPC description based on product type
-            let recommendedGpcDesc = '';
+            // Get recommended GPC titles based on product type
+            let recommendedGpcTitles = [];
             if (detectedCategory === 'cleaning_product') {
-              recommendedGpcDesc = 'cleaning products, detergents, or washing agents';
+              recommendedGpcTitles = ['Laundry Detergents', 'Household Cleaning Products', 'Cleaning Agents'];
             } else if (detectedCategory === 'food_product') {
-              recommendedGpcDesc = 'food items or consumables';
+              recommendedGpcTitles = ['Food Items', 'Packaged Food', 'Grocery Products'];
             } else if (detectedCategory === 'beverage_product') {
-              recommendedGpcDesc = 'beverages or drinks';
+              recommendedGpcTitles = ['Beverages', 'Drinks', 'Water - Packaged', 'Bottled Drinks'];
             } else if (detectedCategory === 'oil_product') {
-              recommendedGpcDesc = 'lubricants or engine oils';
+              recommendedGpcTitles = ['Engine Oil/Engine Lubricants', 'Motor Oils', 'Automotive Lubricants', 'Vehicle Lubricants', 'Lubricating Oils'];
             } else {
-              recommendedGpcDesc = detectedCategory.replace('_', ' ') + 's';
+              recommendedGpcTitles = [detectedCategory.replace('_', ' ') + 's'];
             }
+            
+            // Get the recommended GPC titles as a comma-separated string
+            const gpcTitleSuggestions = recommendedGpcTitles.slice(0, 3).join(', ');
             
             verification.aiSuggestions.push({
               field: 'gpc',
-              suggestion: `Our AI has identified your product "${product.productnameenglish}" as a ${detectedCategory.replace('_', ' ')}. Please select a GPC classification related to ${recommendedGpcDesc} for more accurate categorization. This will improve product discovery and ensure proper classification.`,
+              suggestion: `Our AI has identified your product "${product.productnameenglish}" as a ${detectedCategory.replace('_', ' ')}. Please select a GPC classification such as "${gpcTitleSuggestions}" for more accurate categorization. This will improve product discovery and ensure proper classification.`,
               importance: 'High',
               confidence: classificationConfidence.toFixed(0) + '%',
               nlp_analysis: {
                 detection_method: classificationMethod,
                 identified_category: detectedCategory,
                 matched_patterns: productClassification.ngramMatches || [],
-                semantic_compatibility: 'low'
+                semantic_compatibility: 'low',
+                recommended_gpc_titles: recommendedGpcTitles
               }
             });
           }
