@@ -459,9 +459,12 @@ function parseUnit(unitString, unitData) {
  * @returns {Object} - Compatibility result with status and reason
  */
 function checkGpcUnitCompatibility(gpcString, unitCode, unitType) {
-  if (!gpcString || !unitCode || !unitType) {
+  if (!gpcString || !unitCode) {
     return { compatible: true, reason: null }; // Not enough info to determine incompatibility
   }
+  
+  // Use default unitType if not provided
+  unitType = unitType || 'unknown';
   
   const gpcLower = gpcString.toLowerCase();
   const unitLower = unitCode.toLowerCase();
@@ -1717,44 +1720,48 @@ exports.getAllProducts = async (req, res) => {
           }
           
           // Add unit compatibility check based on detected category
-          if (unitType && expectedUnit && unitType !== expectedUnit) {
-            verification.isValid = false;
-            verification.verificationStatus = 'unverified';
-            verification.issues.push({
-              rule: 'Unit Compatibility',
-              severity: 'high',
-              message: `Product category "${detectedCategory.replace('_', ' ')}" should use ${expectedUnit} units, but uses ${unitType} units`
-            });
+          if (expectedUnit) {
+            const unitType = unitData && inferUnitType(unitData);
             
-            // Get recommended units based on expected unit type
-            let recommendedUnits = [];
-            let unitExplanation = '';
-            
-            if (expectedUnit === 'volume') {
-              recommendedUnits = ['L', 'ML', 'FL OZ'];
-              unitExplanation = 'volume units such as liters or milliliters';
-            } else if (expectedUnit === 'weight') {
-              recommendedUnits = ['KG', 'G'];
-              unitExplanation = 'weight units such as kilograms or grams';
-            } else if (expectedUnit === 'quantity') {
-              recommendedUnits = ['PC', 'EA', 'UNIT'];
-              unitExplanation = 'quantity units such as piece or each';
-            }
-            
-            verification.aiSuggestions.push({
-              field: 'unit',
-              suggestion: `Based on our advanced analysis, your product "${product.productnameenglish}" (${detectedCategory.replace('_', ' ')}) should use ${unitExplanation} instead of ${unitType} units. Using the proper unit type ensures accurate representation and compliance with industry standards.`,
-              importance: 'High',
-              recommended_units: recommendedUnits,
-              confidence: classificationConfidence.toFixed(0) + '%',
-              nlp_analysis: {
-                detection_method: classificationMethod,
-                product_category: detectedCategory,
-                recommended_unit_type: expectedUnit,
-                current_unit_type: unitType,
-                contextual_analysis: productClassification.explanation || `${detectedCategory} products typically use ${expectedUnit} units`
+            if (unitType && unitType !== expectedUnit) {
+              verification.isValid = false;
+              verification.verificationStatus = 'unverified';
+              verification.issues.push({
+                rule: 'Unit Compatibility',
+                severity: 'high',
+                message: `Product category "${detectedCategory.replace('_', ' ')}" should use ${expectedUnit} units, but uses ${unitType} units`
+              });
+              
+              // Get recommended units based on expected unit type
+              let recommendedUnits = [];
+              let unitExplanation = '';
+              
+              if (expectedUnit === 'volume') {
+                recommendedUnits = ['L', 'ML', 'FL OZ'];
+                unitExplanation = 'volume units such as liters or milliliters';
+              } else if (expectedUnit === 'weight') {
+                recommendedUnits = ['KG', 'G'];
+                unitExplanation = 'weight units such as kilograms or grams';
+              } else if (expectedUnit === 'quantity') {
+                recommendedUnits = ['PC', 'EA', 'UNIT'];
+                unitExplanation = 'quantity units such as piece or each';
               }
-            });
+              
+              verification.aiSuggestions.push({
+                field: 'unit',
+                suggestion: `Based on our advanced analysis, your product "${product.productnameenglish}" (${detectedCategory.replace('_', ' ')}) should use ${unitExplanation} instead of ${unitType} units. Using the proper unit type ensures accurate representation and compliance with industry standards.`,
+                importance: 'High',
+                recommended_units: recommendedUnits,
+                confidence: classificationConfidence.toFixed(0) + '%',
+                nlp_analysis: {
+                  detection_method: classificationMethod,
+                  product_category: detectedCategory,
+                  recommended_unit_type: expectedUnit,
+                  current_unit_type: unitType,
+                  contextual_analysis: productClassification.explanation || `${detectedCategory} products typically use ${expectedUnit} units`
+                }
+              });
+            }
           }
         }
       }
