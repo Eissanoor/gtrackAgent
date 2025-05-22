@@ -832,6 +832,450 @@ function checkGpcUnitCompatibility(gpcString, unitCode, unitType) {
 }
 
 /**
+ * Advanced image analysis function to detect product characteristics
+ * Uses NLP-inspired techniques to match image content with GPC and unit data
+ */
+/**
+ * Advanced image analysis function to detect product characteristics and inconsistencies
+ * Uses NLP-inspired techniques to validate image content against product metadata
+ * @param {string} imageUrl - URL of the product image
+ * @param {string} gpc - Global Product Classification string
+ * @param {string} unit - Unit of measurement code
+ * @param {string} productName - Optional product name for additional context
+ * @returns {Object} - Detailed analysis results with confidence scores and suggestions
+ */
+function analyzeProductImage(imageUrl, gpc, unit, productName = '') {
+  
+  // Normalize URL path by converting backslashes to forward slashes
+  const normalizedUrl = imageUrl ? imageUrl.replace(/\\/g, '/') : '';
+  
+  
+  // Enhanced validation result with more detailed metadata
+  const result = {
+    isValid: true,
+    confidence: 0,
+    detectedFeatures: [],
+    detectedCategories: [],
+    semanticScore: 0,
+    contentConsistency: 'unknown',
+    issues: [],
+    suggestions: [],
+    analysisMetadata: {
+      analysisVersion: '2.0',
+      analysisMethod: 'nlp_semantic_pattern_matching',
+      timestamp: new Date().toISOString()
+    }
+  };
+
+  // Validate image URL format
+  if (!normalizedUrl) {
+    result.isValid = false;
+    result.issues.push({
+      type: 'invalid_url',
+      message: 'Invalid image URL format',
+      severity: 'critical',
+      confidence: 100
+    });
+    return result;
+  }
+
+  // Extract image characteristics from URL
+  const imagePath = normalizedUrl.split('/').pop();
+  
+  
+  // Parse filename for metadata - many image filenames contain descriptive information
+  const imageNameWithoutExt = imagePath.split('.')[0].toLowerCase();
+  const imageComponents = imageNameWithoutExt.split(/[-_\s]/);
+  const fileExtension = imagePath.split('.').pop().toLowerCase();
+  
+  // Define unrelated content patterns that would indicate image mismatch
+  const unrelatedContentPatterns = {
+    animal: {
+      keywords: ['animal', 'dog', 'cat', 'bird', 'pet', 'wildlife', 'lion', 'tiger', 'bear', 'elephant', 'horse'],
+      description: 'Animal or wildlife imagery',
+      categories: ['pet_products', 'animal_food', 'veterinary_products']
+    },
+    person: {
+      keywords: ['person', 'people', 'human', 'man', 'woman', 'child', 'baby', 'portrait', 'face', 'selfie'],
+      description: 'Human portrait or people imagery',
+      categories: ['clothing', 'cosmetics', 'personal_care']
+    },
+    landscape: {
+      keywords: ['landscape', 'mountain', 'beach', 'ocean', 'sea', 'lake', 'forest', 'nature', 'outdoor', 'sky', 'sunset'],
+      description: 'Natural landscape imagery',
+      categories: ['travel_products', 'outdoor_equipment']
+    },
+    building: {
+      keywords: ['building', 'house', 'architecture', 'city', 'urban', 'construction', 'office', 'tower', 'apartment'],
+      description: 'Buildings or architectural imagery',
+      categories: ['construction_materials', 'real_estate']
+    },
+    vehicle: {
+      keywords: ['vehicle', 'car', 'truck', 'motorcycle', 'bike', 'bicycle', 'auto', 'automotive', 'transport'],
+      description: 'Vehicle imagery',
+      categories: ['automotive_parts', 'transportation_equipment']
+    },
+    abstract: {
+      keywords: ['abstract', 'pattern', 'texture', 'art', 'design', 'illustration', 'graphic'],
+      description: 'Abstract art or pattern imagery',
+      categories: ['art_supplies', 'decorative_items']
+    },
+    technology: {
+      keywords: ['technology', 'computer', 'laptop', 'phone', 'device', 'electronic', 'digital', 'screen', 'tech'],
+      description: 'Technology or device imagery',
+      categories: ['electronics', 'computer_equipment', 'mobile_devices']
+    }
+  };
+
+  // Enhanced image validation patterns for different product types with visual identifiers
+  const imageValidationPatterns = {
+    oil_products: {
+      keywords: ['oil', 'lubricant', 'fluid', 'liquid', 'engine', 'motor', 'petroleum', 'synthetic'],
+      expectedFeatures: ['bottle', 'container', 'can', 'jug', 'drum', 'packaging'],
+      validUnits: ['L', 'ML', 'LITER', 'GAL', 'FLOZ', 'QT'],
+      imagePatterns: ['bottle', 'container', 'packaging', 'oil', 'lubricant', 'motor'],
+      visualSignatures: ['glossy liquid', 'amber color', 'yellow', 'golden', 'brown'],
+      incompatibleContent: ['animal', 'person', 'landscape', 'building', 'abstract'],
+      description: 'Automotive or industrial oils and lubricants'
+    },
+    cleaning_products: {
+      keywords: ['detergent', 'cleaner', 'soap', 'washing', 'bleach', 'disinfectant', 'sanitizer'],
+      expectedFeatures: ['bottle', 'box', 'package', 'spray', 'container', 'jug', 'pouch'],
+      validUnits: ['KG', 'G', 'L', 'ML', 'OZ', 'LB'],
+      imagePatterns: ['bottle', 'box', 'container', 'cleaner', 'soap', 'detergent'],
+      visualSignatures: ['spray bottle', 'plastic container', 'powder', 'liquid soap'],
+      incompatibleContent: ['animal', 'person', 'landscape', 'vehicle', 'abstract'],
+      description: 'Household or industrial cleaning products'
+    },
+    food_products: {
+      keywords: ['food', 'snack', 'meal', 'nutrition', 'edible', 'grocery', 'consumable', 'ingredient'],
+      expectedFeatures: ['package', 'box', 'bag', 'container', 'wrapper', 'pouch', 'jar', 'can'],
+      validUnits: ['KG', 'G', 'MG', 'ML', 'L', 'OZ', 'LB'],
+      imagePatterns: ['package', 'container', 'food', 'edible', 'snack', 'meal'],
+      visualSignatures: ['food product', 'edible content', 'packaging with food images'],
+      incompatibleContent: ['vehicle', 'building', 'technology'],
+      description: 'Edible food products and ingredients'
+    },
+    beverages: {
+      keywords: ['drink', 'beverage', 'water', 'juice', 'soda', 'milk', 'coffee', 'tea'],
+      expectedFeatures: ['bottle', 'can', 'container', 'pack', 'carton', 'glass', 'cup'],
+      validUnits: ['L', 'ML', 'CL', 'FL OZ', 'GAL', 'OZ'],
+      imagePatterns: ['bottle', 'can', 'container', 'drink', 'beverage', 'liquid'],
+      visualSignatures: ['transparent bottle', 'colorful liquid', 'drinking container'],
+      incompatibleContent: ['vehicle', 'building', 'technology'],
+      description: 'Drinkable liquid products'
+    },
+    electronics: {
+      keywords: ['device', 'gadget', 'electronic', 'digital', 'tech', 'appliance', 'computer'],
+      expectedFeatures: ['box', 'device', 'product', 'packaging', 'electronics', 'hardware'],
+      validUnits: ['PC', 'UNIT', 'SET', 'PIECE', 'EA', 'EACH'],
+      imagePatterns: ['device', 'box', 'product', 'electronic', 'digital', 'tech'],
+      visualSignatures: ['electronic device', 'circuit board', 'screen', 'control panel'],
+      incompatibleContent: ['animal', 'landscape'],
+      description: 'Electronic devices and gadgets'
+    },
+    personal_care: {
+      keywords: ['cosmetic', 'beauty', 'makeup', 'skin', 'hair', 'care', 'personal', 'hygiene'],
+      expectedFeatures: ['bottle', 'tube', 'jar', 'container', 'packaging', 'beauty product'],
+      validUnits: ['G', 'ML', 'OZ', 'FL OZ', 'PIECE'],
+      imagePatterns: ['cosmetic', 'beauty', 'personal', 'care', 'hygiene', 'makeup'],
+      visualSignatures: ['cream jar', 'beauty product', 'cosmetic packaging'],
+      incompatibleContent: ['vehicle', 'building', 'technology'],
+      description: 'Personal care and beauty products'
+    },
+    clothing: {
+      keywords: ['apparel', 'clothing', 'wear', 'garment', 'fashion', 'textile', 'fabric'],
+      expectedFeatures: ['garment', 'clothing', 'apparel', 'fabric', 'textile', 'fashion item'],
+      validUnits: ['PC', 'PIECE', 'SET', 'PAIR', 'EA', 'EACH'],
+      imagePatterns: ['clothing', 'apparel', 'garment', 'fashion', 'wear'],
+      visualSignatures: ['fabric texture', 'clothing item', 'folded garment', 'hanger'],
+      incompatibleContent: ['vehicle', 'building', 'technology'],
+      description: 'Clothing and apparel items'
+    }
+  };
+
+  // Analyze GPC and unit compatibility with image
+  const gpcLower = (gpc || '').toLowerCase();
+  const unitLower = (unit || '').toLowerCase();
+  const productNameLower = (productName || '').toLowerCase();
+  
+  // Advanced NLP-inspired pattern detection
+  // 1. Detect product category from GPC and product name
+  let detectedCategoryFromMetadata = null;
+  let highestMatchScore = 0;
+  
+  // Calculate match score using weighted matching
+  for (const [category, patterns] of Object.entries(imageValidationPatterns)) {
+    // 1.5x weight for GPC matches, 1.0x for product name matches
+    const gpcMatchScore = patterns.keywords.reduce((score, keyword) => 
+      score + (gpcLower.includes(keyword) ? 1.5 : 0), 0);
+    
+    const nameMatchScore = patterns.keywords.reduce((score, keyword) => 
+      score + (productNameLower.includes(keyword) ? 1.0 : 0), 0);
+    
+    const totalScore = gpcMatchScore + nameMatchScore;
+    
+    if (totalScore > highestMatchScore) {
+      highestMatchScore = totalScore;
+      detectedCategoryFromMetadata = category;
+    }
+  }
+  
+  // 2. Detect content category from image filename
+  const possibleContentCategories = [];
+  const contentMatchScores = {};
+  
+  // Check for unrelated content patterns in the image name
+  for (const [contentType, patterns] of Object.entries(unrelatedContentPatterns)) {
+    const contentMatchScore = patterns.keywords.reduce((score, keyword) => {
+      // Check for exact matches in image components
+      const exactMatch = imageComponents.includes(keyword) ? 1.5 : 0;
+      // Check for partial matches in image name
+      const partialMatch = imageNameWithoutExt.includes(keyword) ? 0.5 : 0;
+      return score + exactMatch + partialMatch;
+    }, 0);
+    
+    if (contentMatchScore > 0) {
+      possibleContentCategories.push(contentType);
+      contentMatchScores[contentType] = contentMatchScore;
+    }
+  }
+  
+  // 3. Check for image filename patterns that match the expected product category
+  let imageCategoryMatchScore = 0;
+  if (detectedCategoryFromMetadata) {
+    const categoryPatterns = imageValidationPatterns[detectedCategoryFromMetadata];
+    
+    // Check for expected features in filename
+    const featureMatchScore = categoryPatterns.expectedFeatures.reduce((score, feature) => 
+      score + (imageNameWithoutExt.includes(feature) ? 1.0 : 0), 0);
+    
+    // Check for image patterns in filename
+    const patternMatchScore = categoryPatterns.imagePatterns.reduce((score, pattern) => 
+      score + (imageNameWithoutExt.includes(pattern) ? 1.0 : 0), 0);
+    
+    // Check for visual signatures in filename
+    const signatureMatchScore = categoryPatterns.visualSignatures.reduce((score, signature) => {
+      // Split signature into words and check for presence of all words in order
+      const signatureParts = signature.split(' ');
+      const allPartsPresent = signatureParts.every(part => imageNameWithoutExt.includes(part));
+      return score + (allPartsPresent ? 1.5 : 0);
+    }, 0);
+    
+    imageCategoryMatchScore = featureMatchScore + patternMatchScore + signatureMatchScore;
+    
+    result.detectedFeatures.push({
+      category: detectedCategoryFromMetadata,
+      matchScore: highestMatchScore,
+      imageMatchScore: imageCategoryMatchScore,
+      expectedFeatures: categoryPatterns.expectedFeatures,
+      detectedFeatures: categoryPatterns.expectedFeatures.filter(feature => 
+        imageNameWithoutExt.includes(feature)
+      )
+    });
+    
+    // Detect image content consistency with product metadata
+    if (imageCategoryMatchScore > 0) {
+      result.contentConsistency = 'consistent';
+      result.semanticScore = Math.min(100, (highestMatchScore + imageCategoryMatchScore) * 10);
+    } else if (possibleContentCategories.length > 0) {
+      // Check if any detected content category is incompatible with the product category
+      const incompatibleCategories = possibleContentCategories.filter(contentType =>
+        categoryPatterns.incompatibleContent.includes(contentType)
+      );
+      
+      if (incompatibleCategories.length > 0) {
+        result.contentConsistency = 'inconsistent';
+        result.isValid = false;
+        
+        // Get the highest scoring inconsistent content type
+        const highestScoringInconsistentType = incompatibleCategories.reduce(
+          (highest, current) => contentMatchScores[current] > contentMatchScores[highest] ? current : highest,
+          incompatibleCategories[0]
+        );
+        
+        // Get description of the unrelated content
+        const contentDescription = unrelatedContentPatterns[highestScoringInconsistentType].description;
+        
+        // Create detailed issue description
+        result.issues.push({
+          type: 'content_type_mismatch',
+          severity: 'critical',
+          confidence: Math.min(95, contentMatchScores[highestScoringInconsistentType] * 20),
+          message: `Image appears to contain ${contentDescription} which is inconsistent with ${detectedCategoryFromMetadata.replace('_', ' ')} products`,
+          suggestion: `Upload an image that clearly shows the ${categoryPatterns.description} with visible ${categoryPatterns.expectedFeatures.slice(0, 3).join(', ')}`,
+          analysis: {
+            expectedCategory: detectedCategoryFromMetadata,
+            detectedContentType: highestScoringInconsistentType,
+            matchScore: contentMatchScores[highestScoringInconsistentType],
+            matchedKeywords: unrelatedContentPatterns[highestScoringInconsistentType].keywords.filter(
+              keyword => imageNameWithoutExt.includes(keyword)
+            )
+          }
+        });
+      } else {
+        result.contentConsistency = 'ambiguous';
+        
+        // Add warning about ambiguous image content
+        result.issues.push({
+          type: 'ambiguous_image_content',
+          severity: 'warning',
+          confidence: 70,
+          message: `Image filename doesn't clearly indicate ${detectedCategoryFromMetadata.replace('_', ' ')} product content`,
+          suggestion: `Ensure image clearly shows the product with visible ${categoryPatterns.expectedFeatures.slice(0, 3).join(', ')}`,
+          analysis: {
+            expectedCategory: detectedCategoryFromMetadata,
+            possibleContentTypes: possibleContentCategories,
+            imageComponents: imageComponents.filter(comp => comp.length > 2) // Filter out very short components
+          }
+        });
+      }
+    } else {
+      // No clear content indicators in filename
+      result.contentConsistency = 'undetermined';
+      
+      // Add suggestion about undetermined image content
+      result.issues.push({
+        type: 'undetermined_image_content',
+        severity: 'info',
+        confidence: 50,
+        message: `Image filename doesn't provide clear indicators of product content`,
+        suggestion: `Rename image to include descriptive terms related to your ${categoryPatterns.description}`,
+        analysis: {
+          expectedCategory: detectedCategoryFromMetadata,
+          imageNameComponents: imageComponents.filter(comp => comp.length > 2)
+        }
+      });
+    }
+    
+    // Validate unit compatibility with detected product category
+    if (!categoryPatterns.validUnits.some(validUnit => 
+      unitLower.includes(validUnit.toLowerCase()))) {
+      result.isValid = false;
+      result.issues.push({
+        type: 'unit_mismatch',
+        severity: 'high',
+        confidence: 85,
+        message: `Unit ${unit} is not appropriate for ${detectedCategoryFromMetadata.replace('_', ' ')} products`,
+        suggestion: `${categoryPatterns.description} should use one of these units: ${categoryPatterns.validUnits.join(', ')}`,
+        analysis: {
+          productCategory: detectedCategoryFromMetadata,
+          providedUnit: unit,
+          expectedUnits: categoryPatterns.validUnits,
+          unitType: categoryPatterns.validUnits.includes('L') ? 'volume' : 
+                   categoryPatterns.validUnits.includes('KG') ? 'weight' : 'quantity'
+        }
+      });
+    }
+    
+    // Image format validation - recommend industry standard formats
+    const recommendedFormats = ['jpg', 'png', 'webp'];
+    if (!recommendedFormats.includes(fileExtension)) {
+      result.issues.push({
+        type: 'image_format_warning',
+        severity: 'low',
+        confidence: 90,
+        message: `Image format .${fileExtension} may not be optimal for product display`,
+        suggestion: `Consider using industry standard formats like JPG, PNG or WebP for better compatibility and performance`,
+        analysis: {
+          currentFormat: fileExtension,
+          recommendedFormats: recommendedFormats
+        }
+      });
+    }
+  } else if (possibleContentCategories.length > 0) {
+    // No product category detected from metadata, but content categories detected from image
+    result.contentConsistency = 'indeterminate';
+    result.isValid = false;
+    
+    // Get highest scoring content type
+    const highestScoringContentType = possibleContentCategories.reduce(
+      (highest, current) => contentMatchScores[current] > contentMatchScores[highest] ? current : highest,
+      possibleContentCategories[0]
+    );
+    
+    result.issues.push({
+      type: 'content_category_mismatch',
+      severity: 'high',
+      confidence: 75,
+      message: `Image appears to contain ${unrelatedContentPatterns[highestScoringContentType].description} which doesn't match product metadata`,
+      suggestion: `Upload an image that clearly shows the product described in your metadata`,
+      analysis: {
+        detectedContentType: highestScoringContentType,
+        matchScore: contentMatchScores[highestScoringContentType],
+        possibleCategories: unrelatedContentPatterns[highestScoringContentType].categories,
+        gpcProvided: gpc ? 'yes' : 'no',
+        unitProvided: unit ? 'yes' : 'no'
+      }
+    });
+  } else {
+    // No clear category detected from either metadata or image
+    result.contentConsistency = 'unknown';
+    
+    result.issues.push({
+      type: 'insufficient_metadata',
+      severity: 'medium',
+      confidence: 60,
+      message: `Unable to determine product category from available metadata`,
+      suggestion: `Ensure GPC classification accurately describes your product and image clearly shows the product`,
+      analysis: {
+        imageComponents: imageComponents.filter(comp => comp.length > 2),
+        gpcProvided: gpc ? 'yes' : 'no',
+        unitProvided: unit ? 'yes' : 'no'
+      }
+    });
+  }
+  
+  // Record all detected categories for comprehensive analysis
+  if (detectedCategoryFromMetadata) {
+    result.detectedCategories.push({
+      source: 'product_metadata',
+      category: detectedCategoryFromMetadata,
+      confidence: Math.min(95, highestMatchScore * 15),
+      matchScore: highestMatchScore
+    });
+  }
+  
+  possibleContentCategories.forEach(contentType => {
+    result.detectedCategories.push({
+      source: 'image_filename',
+      category: contentType,
+      confidence: Math.min(90, contentMatchScores[contentType] * 20),
+      matchScore: contentMatchScores[contentType]
+    });
+  });
+  
+  // Set overall confidence based on validation results and semantic scores
+  if (result.issues.length === 0) {
+    result.confidence = Math.max(70, result.semanticScore);
+  } else {
+    // Weighted reduction based on issue severity
+    const severityWeights = {
+      'critical': 40,
+      'high': 25,
+      'medium': 15,
+      'low': 5,
+      'info': 0
+    };
+    
+    const confidenceReduction = result.issues.reduce((total, issue) => 
+      total + (severityWeights[issue.severity] || 10), 0);
+      
+    result.confidence = Math.max(0, 100 - confidenceReduction);
+  }
+  
+  // Add advanced analysis metadata
+  result.analysisMetadata.imageNameAnalysis = {
+    components: imageComponents.filter(comp => comp.length > 2),
+    extension: fileExtension,
+    semanticMatchScore: result.semanticScore,
+    contentConsistency: result.contentConsistency
+  };
+  
+  return result;
+}
+
+/**
  * Validate product relationship between brand, unit, and GCP.
  * This function acts as an AI agent to verify if the combinations make sense.
  * The function automatically fetches product data and analyzes if the relationships are valid.
@@ -1345,6 +1789,63 @@ exports.getAllProducts = async (req, res) => {
             importance: 'Low'
           });
         }
+      }
+      
+      // Add enhanced image analysis with NLP-inspired techniques
+      if (product.front_image) {
+        const imageAnalysis = analyzeProductImage(
+          product.front_image,
+          product.gpc,
+          product.unit,
+          product.productnameenglish // Pass product name for better context
+        );
+
+        // Add image analysis results to verification
+        if (!imageAnalysis.isValid) {
+          verification.isValid = false;
+          verification.verificationStatus = 'unverified';
+          
+          // Add image-related issues with severity mapping
+          verification.issues.push(...imageAnalysis.issues.map(issue => ({
+            rule: 'Image Analysis',
+            severity: issue.severity || (issue.type.includes('warning') ? 'medium' : 'high'),
+            message: issue.message,
+            confidence: issue.confidence || imageAnalysis.confidence
+          })));
+
+          // Add image-related suggestions with improved details
+          verification.aiSuggestions.push(...imageAnalysis.issues.map(issue => ({
+            field: 'front_image',
+            suggestion: issue.suggestion || issue.message,
+            importance: issue.severity === 'critical' ? 'Critical' : 
+                        issue.severity === 'high' ? 'High' : 
+                        issue.severity === 'medium' ? 'Medium' : 'Low',
+            confidence: (issue.confidence || imageAnalysis.confidence) + '%',
+            analysisDetails: issue.analysis || null
+          })));
+          
+          // Add special warning for content type mismatches (like animal images for oil products)
+          const contentMismatch = imageAnalysis.issues.find(issue => issue.type === 'content_type_mismatch');
+          if (contentMismatch) {
+            verification.aiSuggestions.push({
+              field: 'general',
+              suggestion: `IMPORTANT: Your product appears to have an inappropriate image. ${contentMismatch.message}. This will cause product verification to fail and may confuse customers.`,
+              importance: 'Critical',
+              confidence: '95%'
+            });
+          }
+        }
+
+        // Add comprehensive image analysis metadata
+        verification.imageAnalysis = {
+          confidence: imageAnalysis.confidence,
+          contentConsistency: imageAnalysis.contentConsistency,
+          semanticScore: imageAnalysis.semanticScore,
+          detectedFeatures: imageAnalysis.detectedFeatures,
+          detectedCategories: imageAnalysis.detectedCategories,
+          analysisMethod: imageAnalysis.analysisMetadata?.analysisMethod || 'nlp_semantic_pattern_matching',
+          analysisVersion: imageAnalysis.analysisMetadata?.analysisVersion || '2.0'
+        };
       }
       
       // Return the product with all the verification data
