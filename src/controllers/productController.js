@@ -424,7 +424,7 @@ function parseUnit(unitString, unitData) {
   if (!unitString) return { unit_code: null, unit_name: null, type: null, id: null, status: null, created_at: null, updated_at: null };
   
   const unitCode = unitString.trim();
-  console.log(unitString, unitData);
+  
   
   let unitName = unitData && unitData.unit_name ? unitData.unit_name : null;
   
