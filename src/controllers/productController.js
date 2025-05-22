@@ -166,8 +166,87 @@ function classifyProductType(productName, brandName, gpcString) {
     }
   ];
   
-  // Scoring for each category
-  const scores = {};
+  // Enhanced patterns with n-gram recognition for multi-word matches
+  const ngramPatterns = [
+    { ngram: "washing powder", category: "cleaning_product", weight: 2.0, expectedUnit: "weight" },
+    { ngram: "laundry detergent", category: "cleaning_product", weight: 2.0, expectedUnit: "volume" },
+    { ngram: "dish soap", category: "cleaning_product", weight: 2.0, expectedUnit: "volume" },
+    { ngram: "motor oil", category: "oil_product", weight: 2.0, expectedUnit: "volume" },
+    { ngram: "engine oil", category: "oil_product", weight: 2.0, expectedUnit: "volume" },
+    { ngram: "transmission fluid", category: "oil_product", weight: 2.0, expectedUnit: "volume" },
+    { ngram: "olive oil", category: "food_product", weight: 2.0, expectedUnit: "volume" },
+    { ngram: "cooking oil", category: "food_product", weight: 2.0, expectedUnit: "volume" },
+    { ngram: "soft drink", category: "beverage_product", weight: 2.0, expectedUnit: "volume" },
+    { ngram: "mobile phone", category: "electronic_product", weight: 2.0, expectedUnit: "quantity" },
+    { ngram: "cell phone", category: "electronic_product", weight: 2.0, expectedUnit: "quantity" },
+    { ngram: "t shirt", category: "clothing_product", weight: 2.0, expectedUnit: "quantity" },
+    { ngram: "coffee machine", category: "electronic_product", weight: 2.0, expectedUnit: "quantity" },
+    { ngram: "coffee maker", category: "electronic_product", weight: 2.0, expectedUnit: "quantity" },
+    { ngram: "facial cream", category: "personal_care", weight: 2.0, expectedUnit: "weight" },
+    { ngram: "body lotion", category: "personal_care", weight: 2.0, expectedUnit: "volume" }
+  ];
+  
+  // Apply contextual rules based on industry knowledge
+  const contextualRules = [
+    // If "oil" appears with "engine", "motor", "transmission", it's automotive oil
+    {
+      condition: (text) => /\b(engine|motor|transmission|hydraulic)\b.*\b(oil|lubricant)\b/i.test(text) || 
+                           /\b(oil|lubricant)\b.*\b(engine|motor|transmission|hydraulic)\b/i.test(text),
+      category: 'oil_product',
+      confidence: 0.95,
+      expectedUnit: 'volume',
+      explanation: 'This is an automotive oil product based on the context of engine/motor terminology'
+    },
+    // If "washing" appears with "powder" or "detergent", it's a cleaning product
+    {
+      condition: (text) => /\b(washing|laundry)\b.*\b(powder|detergent)\b/i.test(text) || 
+                           /\b(powder|detergent)\b.*\b(washing|laundry)\b/i.test(text),
+      category: 'cleaning_product',
+      confidence: 0.95,
+      expectedUnit: 'weight',
+      explanation: 'This is a laundry cleaning product that needs weight units'
+    },
+    // If "oil" appears with "cooking", "olive", "vegetable", it's food oil
+    {
+      condition: (text) => /\b(cooking|olive|vegetable|sunflower|canola)\b.*\b(oil)\b/i.test(text) || 
+                           /\b(oil)\b.*\b(cooking|olive|vegetable|sunflower|canola)\b/i.test(text),
+      category: 'food_product',
+      confidence: 0.9,
+      expectedUnit: 'volume',
+      explanation: 'This is a cooking oil product that requires volume units'
+    }
+  ];
+  
+  // Check contextual rules first (they have highest precedence)
+  for (const rule of contextualRules) {
+    if (rule.condition(combinedText)) {
+      return {
+        category: rule.category,
+        confidence: rule.confidence * 100,
+        scores: { [rule.category]: rule.confidence },
+        expectedUnit: rule.expectedUnit,
+        explanation: rule.explanation,
+        detectionMethod: 'contextual_rule'
+      };
+    }
+  }
+  
+  // Check for n-gram matches
+  let ngramScore = {};
+  let ngramMatches = [];
+  let unitSuggestions = {};
+  
+  for (const pattern of ngramPatterns) {
+    if (combinedText.includes(pattern.ngram)) {
+      ngramScore[pattern.category] = (ngramScore[pattern.category] || 0) + pattern.weight;
+      ngramMatches.push(pattern.ngram);
+      // Record unit suggestion from the n-gram
+      unitSuggestions[pattern.category] = pattern.expectedUnit;
+    }
+  }
+  
+  // Scoring for each category from keyword patterns
+  const scores = { ...ngramScore };
   for (const pattern of categoryPatterns) {
     let score = 0;
     // Count keyword occurrences
@@ -181,7 +260,7 @@ function classifyProductType(productName, brandName, gpcString) {
       }
     }
     if (score > 0) {
-      scores[pattern.category] = score;
+      scores[pattern.category] = (scores[pattern.category] || 0) + score;
     }
   }
   
@@ -192,23 +271,30 @@ function classifyProductType(productName, brandName, gpcString) {
        productNameLower.includes('detergent') || 
        productNameLower.includes('soap'))) {
     scores['cleaning_product'] = (scores['cleaning_product'] || 0) + 2;
+    unitSuggestions['cleaning_product'] = productNameLower.includes('powder') ? 'weight' : 'volume';
   }
   
   // Return the category with the highest score, or null if no match
   let highestCategory = null;
   let highestScore = 0;
+  let expectedUnit = null;
+  let detectionMethod = ngramMatches.length > 0 ? 'n-gram' : 'keyword';
   
   for (const [category, score] of Object.entries(scores)) {
     if (score > highestScore) {
       highestCategory = category;
       highestScore = score;
+      expectedUnit = unitSuggestions[category] || null;
     }
   }
   
   return {
     category: highestCategory,
     confidence: highestScore > 0 ? Math.min(highestScore / 3 * 100, 100) : 0,
-    scores
+    scores,
+    expectedUnit,
+    ngramMatches,
+    detectionMethod
   };
 }
 
@@ -392,14 +478,145 @@ function checkGpcUnitCompatibility(gpcString, unitCode, unitType) {
     gpcDescription = gpcLower;
   }
   
-  // Define category-unit type mappings
+  // Enhanced semantic embedding vectors (word-level embeddings simulation)
+  // This simulates how word vectors capture semantic relationships
+  const semanticVectors = {
+    // Liquid domain vector components
+    'liquid': [0.8, 0.1, 0.0, 0.1, 0.0],
+    'oil': [0.7, 0.2, 0.0, 0.1, 0.0],
+    'beverage': [0.7, 0.0, 0.1, 0.2, 0.0],
+    'drink': [0.7, 0.0, 0.2, 0.1, 0.0],
+    'fluid': [0.9, 0.0, 0.0, 0.1, 0.0],
+    'juice': [0.6, 0.0, 0.3, 0.1, 0.0],
+    'water': [0.8, 0.0, 0.1, 0.1, 0.0],
+    'milk': [0.6, 0.0, 0.3, 0.1, 0.0],
+    'sauce': [0.6, 0.3, 0.1, 0.0, 0.0],
+    'syrup': [0.7, 0.2, 0.1, 0.0, 0.0],
+    'lubricant': [0.8, 0.1, 0.0, 0.1, 0.0],
+    'solvent': [0.7, 0.2, 0.0, 0.1, 0.0],
+    'cream': [0.5, 0.3, 0.1, 0.1, 0.0],
+    'fuel': [0.8, 0.1, 0.0, 0.1, 0.0],
+    
+    // Solid/powder domain vector components
+    'powder': [0.1, 0.8, 0.0, 0.1, 0.0],
+    'solid': [0.0, 0.9, 0.0, 0.1, 0.0],
+    'grain': [0.0, 0.7, 0.2, 0.1, 0.0],
+    'food': [0.1, 0.5, 0.3, 0.1, 0.0],
+    'flour': [0.0, 0.8, 0.2, 0.0, 0.0],
+    'rice': [0.0, 0.7, 0.3, 0.0, 0.0],
+    'sugar': [0.0, 0.8, 0.2, 0.0, 0.0],
+    'salt': [0.0, 0.9, 0.1, 0.0, 0.0],
+    'cereal': [0.0, 0.6, 0.4, 0.0, 0.0],
+    'coffee': [0.0, 0.7, 0.3, 0.0, 0.0],
+    'spice': [0.0, 0.8, 0.2, 0.0, 0.0],
+    'detergent': [0.0, 0.7, 0.0, 0.3, 0.0],
+    'soap': [0.0, 0.6, 0.0, 0.4, 0.0],
+    'chemical': [0.2, 0.6, 0.0, 0.2, 0.0],
+    
+    // Discrete items domain vector components
+    'device': [0.0, 0.0, 0.9, 0.1, 0.0],
+    'electronic': [0.0, 0.0, 0.8, 0.2, 0.0],
+    'appliance': [0.0, 0.0, 0.7, 0.3, 0.0],
+    'equipment': [0.0, 0.0, 0.8, 0.2, 0.0],
+    'apparatus': [0.0, 0.0, 0.7, 0.3, 0.0],
+    'phone': [0.0, 0.0, 0.9, 0.1, 0.0],
+    'computer': [0.0, 0.0, 0.9, 0.1, 0.0],
+    'machine': [0.0, 0.0, 0.8, 0.2, 0.0],
+    'tool': [0.0, 0.0, 0.7, 0.3, 0.0],
+    'furniture': [0.0, 0.0, 0.9, 0.1, 0.0],
+    'toy': [0.0, 0.0, 0.9, 0.1, 0.0],
+    'game': [0.0, 0.0, 0.8, 0.2, 0.0],
+    'clothing': [0.0, 0.0, 0.9, 0.1, 0.0],
+    'garment': [0.0, 0.0, 0.9, 0.1, 0.0],
+    'shoe': [0.0, 0.0, 0.9, 0.1, 0.0],
+    'accessory': [0.0, 0.0, 0.8, 0.2, 0.0],
+    
+    // Length measurement domain
+    'fabric': [0.0, 0.1, 0.1, 0.0, 0.8],
+    'textile': [0.0, 0.1, 0.1, 0.0, 0.8],
+    'cloth': [0.0, 0.1, 0.1, 0.0, 0.8],
+    'cable': [0.0, 0.0, 0.2, 0.0, 0.8],
+    'wire': [0.0, 0.0, 0.2, 0.0, 0.8],
+    'rope': [0.0, 0.1, 0.1, 0.0, 0.8],
+    'thread': [0.0, 0.1, 0.0, 0.0, 0.9],
+    'yarn': [0.0, 0.1, 0.0, 0.0, 0.9],
+    'ribbon': [0.0, 0.1, 0.0, 0.0, 0.9]
+  };
+  
+  // Unit domain vectors
+  const unitDomainVectors = {
+    'volume': [0.9, 0.0, 0.0, 0.1, 0.0],  // Volume-oriented vector
+    'weight': [0.0, 0.9, 0.0, 0.1, 0.0],  // Weight-oriented vector
+    'quantity': [0.0, 0.0, 0.9, 0.1, 0.0], // Quantity-oriented vector
+    'length': [0.0, 0.0, 0.0, 0.1, 0.9],  // Length-oriented vector
+    'area': [0.0, 0.0, 0.0, 0.9, 0.1]     // Area-oriented vector
+  };
+  
+  // Calculate semantic similarity between GPC description and unit domain
+  function calculateCosineSimilarity(vec1, vec2) {
+    // Simplified cosine similarity calculation
+    let dotProduct = 0;
+    let normA = 0;
+    let normB = 0;
+    
+    for (let i = 0; i < vec1.length; i++) {
+      dotProduct += vec1[i] * vec2[i];
+      normA += vec1[i] * vec1[i];
+      normB += vec2[i] * vec2[i];
+    }
+    
+    normA = Math.sqrt(normA);
+    normB = Math.sqrt(normB);
+    
+    return (normA && normB) ? dotProduct / (normA * normB) : 0;
+  }
+  
+  // Get avg vector for GPC description
+  function getAverageVector(text) {
+    const words = text.split(/\s+/);
+    const sumVector = [0, 0, 0, 0, 0];
+    let wordCount = 0;
+    
+    for (const word of words) {
+      if (semanticVectors[word]) {
+        wordCount++;
+        for (let i = 0; i < 5; i++) {
+          sumVector[i] += semanticVectors[word][i];
+        }
+      }
+    }
+    
+    // Return average vector or default vector if no matches
+    if (wordCount > 0) {
+      return sumVector.map(val => val / wordCount);
+    }
+    return [0.2, 0.2, 0.2, 0.2, 0.2]; // Default balanced vector
+  }
+  
+  // Get vector for GPC description
+  const gpcVector = getAverageVector(gpcDescription);
+  
+  // Determine most likely product category from vector
+  let highestSimilarity = -1;
+  let mostLikelyDomain = null;
+  
+  for (const [domain, vector] of Object.entries(unitDomainVectors)) {
+    const similarity = calculateCosineSimilarity(gpcVector, vector);
+    if (similarity > highestSimilarity) {
+      highestSimilarity = similarity;
+      mostLikelyDomain = domain;
+    }
+  }
+  
+  // Define category-unit type mappings with enhanced NLP features
   const categoryUnitMap = {
     // Liquids should use volume units
     liquid: {
       expectedType: 'volume',
       keywords: ['liquid', 'oil', 'beverage', 'drink', 'fluid', 'juice', 'water', 'milk', 
                 'sauce', 'syrup', 'lubricant', 'solvent', 'cream', 'fuel'],
-      recommendedUnits: ['L', 'ML', 'CL', 'LTR', 'LITER', 'GAL', 'OZ', 'FLOZ']
+      recommendedUnits: ['L', 'ML', 'CL', 'LTR', 'LITER', 'GAL', 'OZ', 'FLOZ'],
+      wordEmbeddingThreshold: 0.7  // Similarity threshold
     },
     
     // Solids and powders should use weight units
@@ -407,7 +624,8 @@ function checkGpcUnitCompatibility(gpcString, unitCode, unitType) {
       expectedType: 'weight',
       keywords: ['powder', 'solid', 'grain', 'food', 'flour', 'rice', 'sugar', 'salt', 
                 'cereal', 'coffee', 'spice', 'detergent', 'soap', 'chemical'],
-      recommendedUnits: ['KG', 'G', 'MG', 'LB', 'OZ', 'TON']
+      recommendedUnits: ['KG', 'G', 'MG', 'LB', 'OZ', 'TON'],
+      wordEmbeddingThreshold: 0.65  // Slightly lower threshold for solids
     },
     
     // Discrete items should use quantity units
@@ -416,80 +634,197 @@ function checkGpcUnitCompatibility(gpcString, unitCode, unitType) {
       keywords: ['device', 'electronic', 'appliance', 'equipment', 'apparatus', 
                 'phone', 'computer', 'machine', 'tool', 'furniture', 'toy', 'game',
                 'clothing', 'garment', 'shoe', 'accessory'],
-      recommendedUnits: ['PC', 'EA', 'UNIT', 'SET', 'PAIR', 'PCS', 'EACH']
+      recommendedUnits: ['PC', 'EA', 'UNIT', 'SET', 'PAIR', 'PCS', 'EACH'],
+      wordEmbeddingThreshold: 0.75  // Higher threshold for items
     },
     
     // Special case for fabric, textiles, cables
     length: {
       expectedType: 'length',
       keywords: ['fabric', 'textile', 'cloth', 'cable', 'wire', 'rope', 'thread', 'yarn', 'ribbon'],
-      recommendedUnits: ['M', 'CM', 'MM', 'FT', 'IN', 'YD']
+      recommendedUnits: ['M', 'CM', 'MM', 'FT', 'IN', 'YD'],
+      wordEmbeddingThreshold: 0.7
     },
     
     // Special case for area-based products
     area: {
       expectedType: 'area',
       keywords: ['carpet', 'rug', 'tile', 'panel', 'board', 'sheet', 'field', 'land'],
-      recommendedUnits: ['M2', 'SQM', 'SQFT', 'ACRE', 'HA']
+      recommendedUnits: ['M2', 'SQM', 'SQFT', 'ACRE', 'HA'],
+      wordEmbeddingThreshold: 0.7
     }
   };
   
-  // Determine product category from GPC
+  // Advanced NLP-based category detection with vector similarity
   let detectedCategory = null;
-  let highestMatchCount = 0;
+  let highestConfidence = 0;
+  let detectionMethod = 'keyword';
   
-  for (const [category, data] of Object.entries(categoryUnitMap)) {
-    // Count how many keywords match
-    const matchCount = data.keywords.filter(keyword => 
-      gpcDescription.includes(keyword)
-    ).length;
+  // First try vector-based similarity
+  if (mostLikelyDomain && highestSimilarity > 0.5) {
+    // Map from vector domain to category
+    const domainToCategoryMap = {
+      'volume': 'liquid',
+      'weight': 'solid',
+      'quantity': 'item',
+      'length': 'length',
+      'area': 'area'
+    };
     
-    if (matchCount > highestMatchCount) {
-      highestMatchCount = matchCount;
-      detectedCategory = category;
+    detectedCategory = domainToCategoryMap[mostLikelyDomain];
+    highestConfidence = highestSimilarity;
+    detectionMethod = 'vector';
+  }
+  
+  // Fallback to keyword-based approach if vector similarity is low
+  if (!detectedCategory || highestConfidence < 0.6) {
+    for (const [category, data] of Object.entries(categoryUnitMap)) {
+      // Count how many keywords match
+      const matchCount = data.keywords.filter(keyword => 
+        gpcDescription.includes(keyword)
+      ).length;
+      
+      // Calculate keyword match confidence
+      const matchConfidence = matchCount / data.keywords.length;
+      
+      if (matchConfidence > highestConfidence) {
+        highestConfidence = matchConfidence;
+        detectedCategory = category;
+        detectionMethod = 'keyword';
+      }
     }
   }
   
-  // If we detected a category and the unit type doesn't match
-  if (detectedCategory && highestMatchCount > 0) {
+  // Apply contextual analysis with n-gram patterns for special cases
+  const ngramPatterns = [
+    // Check for "washing powder", "detergent powder", etc.
+    {
+      pattern: /(washing|detergent|laundry)\s+(powder|granules)/i,
+      category: 'solid',
+      confidence: 0.95,
+      expectedType: 'weight'
+    },
+    // Check for "engine oil", "motor oil", etc.
+    {
+      pattern: /(engine|motor|transmission|hydraulic)\s+oil/i,
+      category: 'liquid',
+      confidence: 0.95,
+      expectedType: 'volume'
+    },
+    // Check for "liquid soap", "liquid detergent", etc.
+    {
+      pattern: /liquid\s+(soap|detergent|cleaner)/i,
+      category: 'liquid',
+      confidence: 0.95,
+      expectedType: 'volume'
+    }
+  ];
+  
+  // Check for n-gram pattern matches
+  for (const pattern of ngramPatterns) {
+    if (pattern.pattern.test(gpcDescription)) {
+      detectedCategory = pattern.category;
+      highestConfidence = pattern.confidence;
+      detectionMethod = 'n-gram';
+      break;
+    }
+  }
+  
+  // If we detected a category with good confidence and the unit type doesn't match
+  if (detectedCategory && highestConfidence > 0.6) {
     const categoryData = categoryUnitMap[detectedCategory];
+    const expectedType = categoryData.expectedType;
     
-    if (unitType !== categoryData.expectedType) {
+    if (unitType !== expectedType) {
       return {
         compatible: false,
-        reason: `GPC indicates a ${detectedCategory} product (${gpcDescription}) but unit is ${unitType} (${unitCode}). ${detectedCategory.charAt(0).toUpperCase() + detectedCategory.slice(1)} products should use ${categoryData.expectedType} units like ${categoryData.recommendedUnits.slice(0, 3).join(', ')}.`,
-        recommendedUnits: categoryData.recommendedUnits
+        reason: `GPC indicates a ${detectedCategory} product (${gpcDescription}) but unit is ${unitType} (${unitCode}). ${detectedCategory.charAt(0).toUpperCase() + detectedCategory.slice(1)} products should use ${expectedType} units like ${categoryData.recommendedUnits.slice(0, 3).join(', ')}.`,
+        recommendedUnits: categoryData.recommendedUnits,
+        confidence: Math.round(highestConfidence * 100),
+        detectionMethod
       };
     }
   }
   
-  // Special case checks
-  
-  // 1. Oil in product name/GPC but not using volume units
-  if ((gpcDescription.includes('oil') || gpcDescription.includes('lubricant')) && unitType !== 'volume') {
-    return {
-      compatible: false,
-      reason: `Oil products must use volume units like liters (L/LTR) or milliliters (ML), but unit is ${unitType} (${unitCode}).`,
-      recommendedUnits: ['L', 'LTR', 'ML']
-    };
-  }
-  
-  // 2. Washing powder with non-weight units
-  if ((gpcDescription.includes('washing powder') || gpcDescription.includes('detergent powder')) && unitType !== 'weight') {
-    return {
-      compatible: false,
-      reason: `Washing/detergent powder products must use weight units like kilograms (KG) or grams (G), but unit is ${unitType} (${unitCode}).`,
+  // Industry-specific contextual rules (more domain knowledge)
+  const industrySpecificRules = [
+    // Rule for automotive oils
+    {
+      condition: (gpc) => /\b(engine|motor|automotive|car|vehicle)\b.*\b(oil|lubricant|fluid)\b/i.test(gpc),
+      unitType: 'volume',
+      message: 'Automotive oil products must use volume units',
+      recommendedUnits: ['L', 'ML', 'LTR']
+    },
+    // Rule for washing powders
+    {
+      condition: (gpc) => /\b(washing|laundry|detergent)\b.*\b(powder|granule)\b/i.test(gpc),
+      unitType: 'weight',
+      message: 'Washing/detergent powder products must use weight units',
       recommendedUnits: ['KG', 'G']
-    };
+    },
+    // Rule for beverages
+    {
+      condition: (gpc) => /\b(drink|beverage|water|juice|soda|milk|coffee|tea)\b/i.test(gpc),
+      unitType: 'volume',
+      message: 'Beverage products must use volume units',
+      recommendedUnits: ['L', 'ML', 'FL OZ']
+    },
+    // Rule for electronics
+    {
+      condition: (gpc) => /\b(electronics|device|gadget|phone|computer|laptop|tablet)\b/i.test(gpc),
+      unitType: 'quantity',
+      message: 'Electronic products must use quantity units',
+      recommendedUnits: ['PC', 'EA', 'UNIT']
+    },
+    // Rule for clothing
+    {
+      condition: (gpc) => /\b(clothing|garment|apparel|wear|fashion|dress|shirt|pant)\b/i.test(gpc),
+      unitType: 'quantity',
+      message: 'Clothing products must use quantity units',
+      recommendedUnits: ['PC', 'EA', 'PAIR']
+    }
+  ];
+  
+  // Check industry-specific rules
+  for (const rule of industrySpecificRules) {
+    if (rule.condition(gpcDescription)) {
+      if (unitType !== rule.unitType) {
+        return {
+          compatible: false,
+          reason: `${rule.message} like ${rule.recommendedUnits.join(', ')}, but unit is ${unitType} (${unitCode}).`,
+          recommendedUnits: rule.recommendedUnits,
+          confidence: 95,
+          detectionMethod: 'industry-rule'
+        };
+      }
+    }
   }
   
-  // 3. Incompatible unit type for product type
-  if (unitType === 'volume' && gpcDescription.includes('clothing')) {
-    return {
-      compatible: false,
-      reason: `Clothing products cannot use volume units (${unitCode}). They should use quantity units like piece (PC) or each (EA).`,
-      recommendedUnits: ['PC', 'EA', 'UNIT', 'PAIR']
-    };
+  // Specific unit code validation patterns
+  const unitValidationPatterns = {
+    'volume': /^(l|ltr|ml|cl|oz|gal|floz|liter)$/i,
+    'weight': /^(kg|g|mg|lb|oz|ton)$/i,
+    'quantity': /^(pc|ea|pcs|unit|set|pair|each)$/i,
+    'length': /^(m|cm|mm|ft|in|yd)$/i,
+    'area': /^(m2|sqm|sqft|ha|acre)$/i
+  };
+  
+  // If we didn't detect incompatibility by category but the unit code format is wrong
+  if (unitType && unitValidationPatterns[unitType] && !unitValidationPatterns[unitType].test(unitLower)) {
+    // Get list of valid units for this type
+    const validUnits = Object.keys(unitValidationPatterns)
+      .filter(type => unitValidationPatterns[type].test(unitLower))
+      .map(type => type);
+    
+    if (validUnits.length > 0) {
+      return {
+        compatible: false,
+        reason: `The unit code '${unitCode}' appears to be a ${validUnits[0]} unit but is being used as a ${unitType} unit. Please use appropriate ${unitType} units.`,
+        recommendedUnits: unitValidationPatterns[unitType].toString().replace(/[\^\$\/]/g, '').split('|'),
+        confidence: 85,
+        detectionMethod: 'unit-format'
+      };
+    }
   }
   
   // No incompatibility detected
@@ -811,6 +1146,8 @@ exports.getAllProducts = async (req, res) => {
         // Store the classification for later use
         const detectedCategory = productClassification.category;
         const classificationConfidence = productClassification.confidence;
+        const classificationMethod = productClassification.detectionMethod || 'keyword';
+        const expectedUnit = productClassification.expectedUnit;
         
         // If no category detected or low confidence, use the existing category detection
         if (!detectedCategory || classificationConfidence < 50) {
@@ -883,7 +1220,13 @@ exports.getAllProducts = async (req, res) => {
               verification.aiSuggestions.push({
                 field: 'gpc',
                 suggestion: `There appears to be a mismatch between your product category and GPC classification. Based on your product "${product.productnameenglish}" and brand "${product.BrandName}", we suggest using a GPC related to ${recommendedGpc}. This ensures accurate product categorization and improves searchability.`,
-                importance: 'High'
+                importance: 'High',
+                nlp_analysis: {
+                  detection_method: 'keyword_comparison',
+                  product_categories: detectedProductCategories,
+                  gpc_categories: detectedGpcCategories,
+                  confidence: 'medium'
+                }
               });
             }
           }
@@ -919,173 +1262,55 @@ exports.getAllProducts = async (req, res) => {
               field: 'gpc',
               suggestion: `Our AI has identified your product "${product.productnameenglish}" as a ${detectedCategory.replace('_', ' ')}. Please select a GPC classification related to ${recommendedGpcDesc} for more accurate categorization. This will improve product discovery and ensure proper classification.`,
               importance: 'High',
-              confidence: classificationConfidence.toFixed(0) + '%'
-            });
-          }
-        }
-      }
-      
-      // RULE 3: Check if unit makes sense for the product
-      if (product.BrandName && product.unit && unitData) {
-        const unitCode = product.unit.toLowerCase();
-        const unitName = unitData.unit_name ? unitData.unit_name.toLowerCase() : '';
-        const productNameLower = product.productnameenglish ? product.productnameenglish.toLowerCase() : '';
-        const brandNameLower = product.BrandName.toLowerCase();
-        
-        // Use advanced product classification
-        const productClassification = classifyProductType(
-          product.productnameenglish,
-          product.BrandName,
-          product.gpc
-        );
-        
-        // Get unit type
-        const unitType = inferUnitType(unitData);
-        
-        // If we have a confident classification, use it for unit validation
-        if (productClassification.category && productClassification.confidence >= 60) {
-          const unitRecommendations = getRecommendedUnits(productClassification.category);
-          
-          // Check if current unit matches recommended primary or alternate type
-          const matchesPrimaryType = unitType === unitRecommendations.primaryType;
-          const matchesAlternateType = unitRecommendations.alternateType && unitType === unitRecommendations.alternateType;
-          
-          // If unit doesn't match either type
-          if (!matchesPrimaryType && !matchesAlternateType) {
-            verification.isValid = false;
-            verification.verificationStatus = 'unverified';
-            verification.issues.push({
-              rule: 'Unit Compatibility',
-              severity: 'high',
-              message: `${productClassification.category.replace('_', ' ')} should use ${unitRecommendations.primaryType} units, but uses ${unitType} units`
-            });
-            
-            verification.aiSuggestions.push({
-              field: 'unit',
-              suggestion: `Our AI has identified your product "${product.productnameenglish}" as a ${productClassification.category.replace('_', ' ')}. ${unitRecommendations.explanation}. Please update your unit from "${unitData.unit_name}" to an appropriate ${unitRecommendations.primaryType} unit.`,
-              importance: 'High',
-              recommended_units: unitRecommendations.units,
-              confidence: productClassification.confidence.toFixed(0) + '%'
+              confidence: classificationConfidence.toFixed(0) + '%',
+              nlp_analysis: {
+                detection_method: classificationMethod,
+                identified_category: detectedCategory,
+                matched_patterns: productClassification.ngramMatches || [],
+                semantic_compatibility: 'low'
+              }
             });
           }
           
-          // Special case for washing powder - must use weight units
-          if (productNameLower.includes('washing') && 
-              productNameLower.includes('powder') && 
-              unitType !== 'weight') {
+          // Add unit compatibility check based on detected category
+          if (unitType && expectedUnit && unitType !== expectedUnit) {
             verification.isValid = false;
             verification.verificationStatus = 'unverified';
             verification.issues.push({
               rule: 'Unit Compatibility',
               severity: 'high',
-              message: `Washing powder products should use weight units (like kg, g), but uses ${unitType} units`
+              message: `Product category "${detectedCategory.replace('_', ' ')}" should use ${expectedUnit} units, but uses ${unitType} units`
             });
             
-            verification.aiSuggestions.push({
-              field: 'unit',
-              suggestion: `Your product "${product.productnameenglish}" is a washing powder which should be measured in weight units. Please use kilograms (KG) or grams (G) for accurate measurement. Using the correct unit is critical for consumer understanding and industry standards compliance.`,
-              importance: 'High',
-              recommended_units: ['KG', 'G']
-            });
-          }
-        } else {
-          // Fallback to the simpler detection logic if classification isn't confident
-          // Determine the product type based on name/brand
-          const isLiquidProduct = ['oil', 'water', 'juice', 'fluid', 'liquid', 'drink', 'beverage'].some(term => 
-            productNameLower.includes(term) || brandNameLower.includes(term));
-          
-          const isWeightProduct = ['food', 'grain', 'powder', 'solid', 'bulk', 'washing powder', 'detergent powder'].some(term => 
-            productNameLower.includes(term) || brandNameLower.includes(term));
-          
-          const isCountProduct = ['piece', 'count', 'item', 'electronic', 'device', 'gadget'].some(term => 
-            productNameLower.includes(term) || brandNameLower.includes(term));
-          
-          // Check for mismatches - similar logic to existing code but simplified
-          if (isLiquidProduct && unitType !== 'volume') {
-            verification.isValid = false;
-            verification.verificationStatus = 'unverified';
-            verification.issues.push({
-              rule: 'Unit Compatibility',
-              severity: 'high',
-              message: `A liquid product should use volume units (like liter), but uses ${unitType} unit (${unitName})`
-            });
+            // Get recommended units based on expected unit type
+            let recommendedUnits = [];
+            let unitExplanation = '';
             
-            verification.aiSuggestions.push({
-              field: 'unit',
-              suggestion: `Your product "${product.productnameenglish}" appears to be a liquid product but is using ${unitType} units. For liquid products, we recommend using volume units such as liters (L), milliliters (mL), fluid ounces (fl oz), or gallons. This ensures accurate quantity representation and improves consumer understanding.`,
-              importance: 'High',
-              recommended_units: ['L', 'ML', 'FL OZ']
-            });
-          } else if (isWeightProduct && unitType !== 'weight') {
-            verification.isValid = false;
-            verification.verificationStatus = 'unverified';
-            verification.issues.push({
-              rule: 'Unit Compatibility',
-              severity: 'high',
-              message: `A weight-based product should use weight units (like kg), but uses ${unitType} unit (${unitName})`
-            });
-            
-            verification.aiSuggestions.push({
-              field: 'unit',
-              suggestion: `Your product "${product.productnameenglish}" appears to be a weight-based product but is using ${unitType} units. For such products, we recommend using weight units such as kilograms (kg), grams (g), pounds (lb), or ounces (oz). This ensures accurate measurement representation and improves consumer understanding.`,
-              importance: 'High',
-              recommended_units: ['KG', 'G', 'LB', 'OZ']
-            });
-          } else if (isCountProduct && unitType !== 'quantity') {
-            verification.isValid = false;
-            verification.verificationStatus = 'unverified';
-            verification.issues.push({
-              rule: 'Unit Compatibility',
-              severity: 'high',
-              message: `A quantity-based product should use quantity units (like piece), but uses ${unitType} unit (${unitName})`
-            });
-            
-            verification.aiSuggestions.push({
-              field: 'unit',
-              suggestion: `Your product "${product.productnameenglish}" appears to be a quantity-based item but is using ${unitType} units. For such products, we recommend using quantity units such as piece, each, count, or unit. This ensures accurate quantity representation and improves consumer understanding.`,
-              importance: 'High',
-              recommended_units: ['PC', 'EA', 'CT', 'UNIT']
-            });
-          }
-          
-          // Special case for oil products from the example
-          const isOilProduct = brandNameLower.includes('oil') || productNameLower.includes('oil');
-          if (isOilProduct && !['l', 'ltr', 'litre', 'liter'].includes(unitCode)) {
-            verification.isValid = false;
-            verification.verificationStatus = 'unverified';
-            verification.issues.push({
-              rule: 'Unit Compatibility',
-              severity: 'high',
-              message: `Oil products should use volume units (like liter), but uses ${unitCode} unit`
-            });
-            
-            verification.aiSuggestions.push({
-              field: 'unit',
-              suggestion: `Your product "${product.productnameenglish}" is an oil product which should be measured in volume units. Please use liters (L) or milliliters (ML) for engine oils and lubricants. Using the correct unit is critical for industry standards compliance and accurate quantity representation.`,
-              importance: 'High',
-              recommended_units: ['L', 'LTR', 'ML']
-            });
-          }
-          
-          // Special case for washing powder
-          if ((productNameLower.includes('washing') && productNameLower.includes('powder')) || 
-              (productNameLower.includes('detergent') && productNameLower.includes('powder'))) {
-            if (unitType !== 'weight') {
-              verification.isValid = false;
-              verification.verificationStatus = 'unverified';
-              verification.issues.push({
-                rule: 'Unit Compatibility',
-                severity: 'high',
-                message: `Washing powder products should use weight units (like kg, g), but uses ${unitType} units`
-              });
-              
-              verification.aiSuggestions.push({
-                field: 'unit',
-                suggestion: `Your product "${product.productnameenglish}" is a washing powder which should be measured in weight units. Please use kilograms (KG) or grams (G) for accurate measurement. Using the correct unit is critical for consumer understanding and industry standards compliance.`,
-                importance: 'High',
-                recommended_units: ['KG', 'G']
-              });
+            if (expectedUnit === 'volume') {
+              recommendedUnits = ['L', 'ML', 'FL OZ'];
+              unitExplanation = 'volume units such as liters or milliliters';
+            } else if (expectedUnit === 'weight') {
+              recommendedUnits = ['KG', 'G'];
+              unitExplanation = 'weight units such as kilograms or grams';
+            } else if (expectedUnit === 'quantity') {
+              recommendedUnits = ['PC', 'EA', 'UNIT'];
+              unitExplanation = 'quantity units such as piece or each';
             }
+            
+            verification.aiSuggestions.push({
+              field: 'unit',
+              suggestion: `Based on our advanced analysis, your product "${product.productnameenglish}" (${detectedCategory.replace('_', ' ')}) should use ${unitExplanation} instead of ${unitType} units. Using the proper unit type ensures accurate representation and compliance with industry standards.`,
+              importance: 'High',
+              recommended_units: recommendedUnits,
+              confidence: classificationConfidence.toFixed(0) + '%',
+              nlp_analysis: {
+                detection_method: classificationMethod,
+                product_category: detectedCategory,
+                recommended_unit_type: expectedUnit,
+                current_unit_type: unitType,
+                contextual_analysis: productClassification.explanation || `${detectedCategory} products typically use ${expectedUnit} units`
+              }
+            });
           }
         }
       }
