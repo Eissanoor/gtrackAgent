@@ -4,23 +4,28 @@ const { fetchUnverifiedProductsAndMembers } = require('../controllers/emailsend'
 
 /**
  * GET /api/emailsend/unverified-products
- * Fetches unverified products and returns matching member email
+ * Fetches unverified products and returns matching member details with product information
  */
 router.get('/unverified-products', async (req, res) => {
   try {
-    const memberEmail = await fetchUnverifiedProductsAndMembers();
+    const results = await fetchUnverifiedProductsAndMembers();
     
-    if (memberEmail) {
+    if (results && results.length > 0) {
+      const totalProducts = results.reduce((sum, member) => sum + member.products.length, 0);
       res.json({
         success: true,
-        message: 'Member email found for unverified products',
-        email: memberEmail
+        message: `Found ${results.length} member(s) with ${totalProducts} unverified product(s)`,
+        memberCount: results.length,
+        totalProducts: totalProducts,
+        data: results
       });
     } else {
       res.json({
         success: false,
-        message: 'No member email found for unverified products',
-        email: null
+        message: 'No unverified products found with matching member details',
+        memberCount: 0,
+        totalProducts: 0,
+        data: []
       });
     }
   } catch (error) {
