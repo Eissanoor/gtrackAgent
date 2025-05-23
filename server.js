@@ -2,13 +2,14 @@ const express = require('express');
 const dotenv = require('dotenv');
 const path = require('path');
 const expressLayouts = require('express-ejs-layouts');
-
+const cors = require('cors');
 // Load environment variables
 dotenv.config();
 
 // Import routes
 const productRoutes = require('./src/routes/productRoutes');
 const testRoutes = require('./src/routes/testRoutes');
+const emailsendRoutes = require('./src/routes/emailsendRoute');
 
 // Create Express app
 const app = express();
@@ -17,6 +18,7 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cors());
 
 // Set view engine
 app.set('view engine', 'ejs');
@@ -28,6 +30,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Routes
 app.use('/api/products', productRoutes);
 app.use('/api/test', testRoutes);
+app.use('/api/emailsend', emailsendRoutes);
 
 // Root route
 app.get('/', (req, res) => {
