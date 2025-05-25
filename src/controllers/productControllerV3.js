@@ -1006,11 +1006,28 @@ async function verifyClarifaiImage(imageUrl, productName, gpc, unit) {
       };
     }
 
+    // Format the image URL - prepend domain if it's a relative path
+    let formattedImageUrl = imageUrl;
+    
+    // Check if the URL is relative (doesn't start with http)
+    if (!imageUrl.startsWith('http')) {
+      // Replace backslashes with forward slashes for web URLs
+      const normalizedPath = imageUrl.replace(/\\/g, '/');
+      
+      // Remove leading slash if present
+      const cleanPath = normalizedPath.startsWith('/') ? normalizedPath.substring(1) : normalizedPath;
+      
+      // Prepend the base URL
+      formattedImageUrl = `https://backend.gtrack.online/${cleanPath}`;
+      
+      console.log(`Converted relative image path to full URL: ${formattedImageUrl}`);
+    }
+
     // Define expected concepts based on product metadata
     const expectedConcepts = generateExpectedConcepts(productName, gpc, unit);
     
     // Predict concepts in the image using Clarifai's general model
-    const response = await clarifaiApp.models.predict(Clarifai.GENERAL_MODEL, imageUrl);
+    const response = await clarifaiApp.models.predict(Clarifai.GENERAL_MODEL, formattedImageUrl);
     
     // Extract detected concepts from Clarifai response
     const detectedConcepts = response.outputs[0].data.concepts
@@ -1038,7 +1055,8 @@ async function verifyClarifaiImage(imageUrl, productName, gpc, unit) {
       score: verificationScore.score,
       confidence: verificationScore.confidence,
       detectedConcepts: detectedConcepts.slice(0, 10), // Return top 10 concepts
-      expectedConcepts: expectedConcepts
+      expectedConcepts: expectedConcepts,
+      imageUrl: formattedImageUrl // Include the processed URL for debugging
     };
   } catch (error) {
     console.error('Clarifai image verification error:', error);
@@ -1047,7 +1065,8 @@ async function verifyClarifaiImage(imageUrl, productName, gpc, unit) {
       message: `Failed to verify image: ${error.message}`,
       error: error.message,
       matches: [],
-      confidence: 0
+      confidence: 0,
+      imageUrl: imageUrl // Include the original URL for debugging
     };
   }
 }
@@ -2644,7 +2663,8 @@ exports.getAllProducts = async (req, res) => {
             verification.issues.push({
               rule: 'Image Content Verification',
               severity: 'high',
-              message: clarifaiVerification.message || 'Image content does not match product description'
+              message: clarifaiVerification.message || 'Image content does not match product description',
+              processedImageUrl: clarifaiVerification.imageUrl // Include the processed URL for reference
             });
             
             // Add AI suggestion for image mismatch
@@ -2652,6 +2672,14 @@ exports.getAllProducts = async (req, res) => {
               field: 'front_image',
               suggestion: `The product image doesn't clearly show a ${product.productnameenglish}. Please upload an image that clearly shows the product matching its description. We expected to see ${clarifaiVerification.expectedConcepts.slice(0, 5).join(', ')} but detected ${clarifaiVerification.detectedConcepts.slice(0, 3).map(c => c.name).join(', ')}.`,
               importance: 'High'
+            });
+          } else {
+            // If verification passes, add a positive note
+            verification.positivePoints = verification.positivePoints || [];
+            verification.positivePoints.push({
+              rule: 'Image Content Verification',
+              message: 'Product image correctly matches the product description',
+              score: Math.round(clarifaiVerification.score * 100)
             });
           }
         } catch (clarifaiError) {
