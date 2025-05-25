@@ -1,9 +1,13 @@
 const { gtrackDB, gs1DB } = require('../models');
 const Clarifai = require('clarifai');
+const dotenv = require('dotenv');
+
+
+dotenv.config();
 
 // Initialize Clarifai client
 const clarifaiApp = new Clarifai.App({
-  apiKey: process.env.CLARIFAI_API_KEY || 'aea6fc5c9cc84320877e410f64b232c5' // Use environment variable or add your key
+  apiKey: process.env.CLARIFAI_API_KEY || 'assssssdsadsd' // Use environment variable or add your key
 });
 
 /**
@@ -2247,7 +2251,8 @@ exports.getAllProducts = async (req, res) => {
         verificationStatus: 'verified',  // 'verified' or 'unverified'
         issues: [],           // List of identified issues
         missingFields: [],    // List of missing fields
-        aiSuggestions: []      // AI suggestions for improvement
+        aiSuggestions: [],     // AI suggestions for improvement
+        issueFields: {}       // Object to track which fields have issues
       };
       
       // RULE 1: Check for required fields (front_image, BrandName, gpc, unit)
@@ -2261,6 +2266,13 @@ exports.getAllProducts = async (req, res) => {
           severity: 'critical',
           message: 'Product must have a front image'
         });
+        
+        // Add to issueFields
+        verification.issueFields.front_image = {
+          hasIssue: true,
+          severity: 'critical',
+          reason: 'Missing required field'
+        };
         
         verification.aiSuggestions.push({
           field: 'front_image',
@@ -2280,6 +2292,13 @@ exports.getAllProducts = async (req, res) => {
           message: 'Product must have a brand name'
         });
         
+        // Add to issueFields
+        verification.issueFields.BrandName = {
+          hasIssue: true,
+          severity: 'critical',
+          reason: 'Missing required field'
+        };
+        
         verification.aiSuggestions.push({
           field: 'BrandName',
           suggestion: 'Add the product\'s official brand name. If this is a private label product, enter your company name as the brand. Ensure the brand name matches what appears on the product packaging.',
@@ -2298,6 +2317,13 @@ exports.getAllProducts = async (req, res) => {
           message: 'Product must have a Global Product Classification (GPC)'
         });
         
+        // Add to issueFields
+        verification.issueFields.gpc = {
+          hasIssue: true,
+          severity: 'critical',
+          reason: 'Missing required field'
+        };
+        
         verification.aiSuggestions.push({
           field: 'gpc',
           suggestion: 'Select an appropriate Global Product Classification (GPC) that accurately describes your product category. This classification helps in proper categorization and searchability of your product.',
@@ -2315,6 +2341,13 @@ exports.getAllProducts = async (req, res) => {
           severity: 'critical',
           message: 'Product must have a unit of measurement'
         });
+        
+        // Add to issueFields
+        verification.issueFields.unit = {
+          hasIssue: true,
+          severity: 'critical',
+          reason: 'Missing required field'
+        };
         
         verification.aiSuggestions.push({
           field: 'unit',
@@ -2339,6 +2372,19 @@ exports.getAllProducts = async (req, res) => {
             severity: 'high',
             message: compatibilityResult.reason
           });
+          
+          // Add to issueFields - both GPC and unit have issues
+          verification.issueFields.gpc = verification.issueFields.gpc || {
+            hasIssue: true,
+            severity: 'high',
+            reason: 'Incompatible with unit'
+          };
+          
+          verification.issueFields.unit = verification.issueFields.unit || {
+            hasIssue: true,
+            severity: 'high',
+            reason: 'Incompatible with GPC'
+          };
           
           // Add AI suggestion for incompatible GPC and unit
           verification.aiSuggestions.push({
@@ -2426,6 +2472,17 @@ exports.getAllProducts = async (req, res) => {
                 message: `Product category (${detectedProductCategories.join(', ')}) does not match GPC category (${detectedGpcCategories.join(', ')})`
               });
               
+              // Add to issueFields
+              verification.issueFields.gpc = verification.issueFields.gpc || {
+                hasIssue: true,
+                severity: 'high',
+                reason: 'Category mismatch',
+                details: {
+                  productCategories: detectedProductCategories,
+                  gpcCategories: detectedGpcCategories
+                }
+              };
+              
               // Add professional AI suggestion for category mismatch
               let recommendedGpc = '';
               if (detectedProductCategories.includes('oil')) {
@@ -2467,6 +2524,17 @@ exports.getAllProducts = async (req, res) => {
               message: `Product appears to be a ${detectedCategory.replace('_', ' ')} but GPC doesn't reflect this category`
             });
             
+            // Add to issueFields
+            verification.issueFields.gpc = verification.issueFields.gpc || {
+              hasIssue: true,
+              severity: 'high',
+              reason: 'Category inconsistency',
+              details: {
+                detectedCategory: detectedCategory,
+                confidence: classificationConfidence.toFixed(0) + '%'
+              }
+            };
+            
             // Get GPC title suggestions from the database if possible
             let recommendedGpcTitles = getDirectGpcSuggestions(
               prefetchedGpcClasses, 
@@ -2504,6 +2572,18 @@ exports.getAllProducts = async (req, res) => {
                 severity: 'high',
                 message: `Product category "${detectedCategory.replace('_', ' ')}" should use ${expectedUnit} units, but uses ${unitType} units`
               });
+              
+              // Add to issueFields
+              verification.issueFields.unit = verification.issueFields.unit || {
+                hasIssue: true,
+                severity: 'high',
+                reason: 'Incorrect unit type for product category',
+                details: {
+                  productCategory: detectedCategory,
+                  expectedUnitType: expectedUnit,
+                  currentUnitType: unitType
+                }
+              };
               
               // Get recommended units based on expected unit type
               let recommendedUnits = [];
@@ -2607,6 +2687,18 @@ exports.getAllProducts = async (req, res) => {
             confidence: issue.confidence || imageAnalysis.confidence
           })));
 
+          // Add image-related issues to issueFields
+          verification.issueFields.front_image = verification.issueFields.front_image || {
+            hasIssue: true,
+            severity: imageAnalysis.issues[0]?.severity || 'high',
+            reason: imageAnalysis.issues[0]?.message || 'Image analysis failed',
+            details: {
+              contentConsistency: imageAnalysis.contentConsistency,
+              detectedCategories: imageAnalysis.detectedCategories.map(cat => cat.category),
+              confidence: imageAnalysis.confidence
+            }
+          };
+
           // Add image-related suggestions with improved details
           verification.aiSuggestions.push(...imageAnalysis.issues.map(issue => ({
             field: 'front_image',
@@ -2666,6 +2758,18 @@ exports.getAllProducts = async (req, res) => {
               message: clarifaiVerification.message || 'Image content does not match product description',
               processedImageUrl: clarifaiVerification.imageUrl // Include the processed URL for reference
             });
+            
+            // Add to issueFields
+            verification.issueFields.front_image = verification.issueFields.front_image || {
+              hasIssue: true,
+              severity: 'high',
+              reason: 'Image content does not match product description',
+              details: {
+                expectedConcepts: clarifaiVerification.expectedConcepts.slice(0, 5),
+                detectedConcepts: clarifaiVerification.detectedConcepts.slice(0, 3).map(c => c.name),
+                score: clarifaiVerification.score
+              }
+            };
             
             // Add AI suggestion for image mismatch
             verification.aiSuggestions.push({
