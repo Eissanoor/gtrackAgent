@@ -34,7 +34,7 @@ app.use('/api/emailsend', emailsendRoutes);
 
 // Root route
 app.get('/', (req, res) => {
-  res.render('index', { title: 'GTrack Agent' });
+  res.json({ message: 'GTrack Agent' });
 });
 
 // Start the server
