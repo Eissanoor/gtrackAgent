@@ -1,4 +1,10 @@
 const { gtrackDB, gs1DB } = require('../models');
+const Clarifai = require('clarifai');
+
+// Initialize Clarifai client
+const clarifaiApp = new Clarifai.App({
+  apiKey: process.env.CLARIFAI_API_KEY || 'aea6fc5c9cc84320877e410f64b232c5' // Use environment variable or add your key
+});
 
 /**
  * Helper function to validate barcode format
@@ -978,6 +984,593 @@ function checkBrickUnitCompatibility(brickString, unitCode, unitType) {
   
   // No incompatibility detected
   return { compatible: true, reason: null };
+}
+
+/**
+ * Clarifai-based image verification for product images
+ * Verifies if the product image matches the product description and classification
+ * @param {string} imageUrl - URL of the product image
+ * @param {string} productName - Product name in English
+ * @param {string} gpc - Global Product Classification
+ * @param {string} unit - Unit of measurement
+ * @returns {Promise<Object>} - Verification result with valid flag, matches, and confidence
+ */
+async function verifyClarifaiImage(imageUrl, productName, gpc, unit) {
+  try {
+    if (!imageUrl) {
+      return {
+        valid: false,
+        message: 'Image URL is missing',
+        matches: [],
+        confidence: 0
+      };
+    }
+
+    // Define expected concepts based on product metadata
+    const expectedConcepts = generateExpectedConcepts(productName, gpc, unit);
+    
+    // Predict concepts in the image using Clarifai's general model
+    const response = await clarifaiApp.models.predict(Clarifai.GENERAL_MODEL, imageUrl);
+    
+    // Extract detected concepts from Clarifai response
+    const detectedConcepts = response.outputs[0].data.concepts
+      .filter(concept => concept.value > 0.6) // Only include concepts with confidence > 60%
+      .map(concept => ({
+        name: concept.name,
+        confidence: concept.value
+      }));
+    
+    // Find matching concepts between expected and detected
+    const matches = findConceptMatches(expectedConcepts, detectedConcepts);
+    
+    // Calculate overall verification score
+    const verificationScore = calculateVerificationScore(matches, expectedConcepts);
+    
+    // Determine if image is valid based on verification score
+    const isValid = verificationScore.score >= 0.65; // 65% threshold for validity
+    
+    return {
+      valid: isValid,
+      message: isValid ? 
+        'Image content matches product description' : 
+        'Image content does not sufficiently match product description',
+      matches: matches,
+      score: verificationScore.score,
+      confidence: verificationScore.confidence,
+      detectedConcepts: detectedConcepts.slice(0, 10), // Return top 10 concepts
+      expectedConcepts: expectedConcepts
+    };
+  } catch (error) {
+    console.error('Clarifai image verification error:', error);
+    return {
+      valid: false,
+      message: `Failed to verify image: ${error.message}`,
+      error: error.message,
+      matches: [],
+      confidence: 0
+    };
+  }
+}
+
+/**
+ * Generate expected image concepts based on product metadata
+ * @param {string} productName - Product name in English
+ * @param {string} gpc - Global Product Classification
+ * @param {string} unit - Unit of measurement
+ * @returns {Array} - Array of expected concepts
+ */
+function generateExpectedConcepts(productName, gpc, unit) {
+  const concepts = [];
+  
+  // Product-specific concepts based on name
+  if (productName) {
+    const productNameLower = productName.toLowerCase();
+    
+    // Add product name keywords to concepts
+    const keywords = productNameLower.split(' ')
+      .filter(word => word.length > 3) // Only include meaningful words
+      .filter(word => !['with', 'from', 'this', 'that', 'and', 'for', 'the'].includes(word)); // Filter common words
+    
+    concepts.push(...keywords);
+    
+    // Oil-related concepts - enhanced with more specificity
+    if (productNameLower.includes('oil') || productNameLower.includes('lubricant')) {
+      concepts.push('oil', 'bottle', 'container', 'liquid', 'lubricant');
+      
+      if (productNameLower.includes('engine') || productNameLower.includes('motor')) {
+        concepts.push('engine', 'motor', 'automotive', 'car', 'vehicle', 'mechanical');
+        // Add specific oil container types
+        concepts.push('plastic container', 'oil container', 'automotive fluid');
+      }
+      
+      if (productNameLower.includes('cooking')) {
+        concepts.push('cooking', 'food', 'kitchen', 'cooking oil', 'vegetable oil');
+        // Add specific cooking oil container types
+        concepts.push('glass bottle', 'cooking oil bottle', 'food oil');
+      }
+      
+      // Differentiate synthetic oil
+      if (productNameLower.includes('synthetic')) {
+        concepts.push('synthetic', 'synthetic oil');
+      }
+    }
+    
+    // Water/beverage related concepts - enhanced
+    if (productNameLower.includes('water') || productNameLower.includes('drink') || 
+        productNameLower.includes('beverage') || productNameLower.includes('juice') ||
+        productNameLower.includes('soda') || productNameLower.includes('coffee')) {
+      concepts.push('bottle', 'drink', 'liquid', 'beverage', 'container');
+      
+      // Softwater specific
+      if (productNameLower.includes('soft') && productNameLower.includes('water')) {
+        concepts.push('soft drink', 'soda', 'carbonated', 'refreshment');
+        concepts.push('soft water bottle', 'plastic bottle', 'drink container');
+      }
+      
+      // Specific beverage types
+      if (productNameLower.includes('juice')) {
+        concepts.push('juice', 'fruit', 'fruit juice', 'juice bottle');
+      }
+      
+      if (productNameLower.includes('coffee')) {
+        concepts.push('coffee', 'coffee bean', 'coffee package', 'caffeine');
+      }
+      
+      if (productNameLower.includes('tea')) {
+        concepts.push('tea', 'tea bag', 'tea box', 'tea package');
+      }
+      
+      if (productNameLower.includes('milk')) {
+        concepts.push('milk', 'dairy', 'milk bottle', 'milk carton');
+      }
+    }
+    
+    // Cleaning product concepts - enhanced
+    if (productNameLower.includes('detergent') || productNameLower.includes('cleaner') || 
+        productNameLower.includes('soap') || productNameLower.includes('washing')) {
+      concepts.push('cleaning', 'detergent', 'soap', 'bottle', 'container', 'household');
+      
+      // Differentiate powder vs liquid
+      if (productNameLower.includes('powder')) {
+        concepts.push('powder', 'box', 'package', 'detergent powder', 'washing powder');
+      } else {
+        concepts.push('liquid', 'liquid detergent', 'cleaning liquid');
+      }
+      
+      // Specific cleaning types
+      if (productNameLower.includes('dish')) {
+        concepts.push('dish', 'dishwashing', 'kitchen', 'dish soap');
+      }
+      
+      if (productNameLower.includes('laundry')) {
+        concepts.push('laundry', 'clothes', 'washing machine', 'laundry detergent');
+      }
+      
+      if (productNameLower.includes('floor') || productNameLower.includes('surface')) {
+        concepts.push('floor', 'surface', 'floor cleaner', 'mop');
+      }
+    }
+    
+    // Food product concepts - enhanced
+    if (productNameLower.includes('food') || productNameLower.includes('snack') || 
+        productNameLower.includes('meal') || productNameLower.includes('grocery') ||
+        productNameLower.includes('cereal') || productNameLower.includes('pasta')) {
+      concepts.push('food', 'package', 'container', 'grocery', 'edible');
+      
+      // Specific food types
+      if (productNameLower.includes('snack')) {
+        concepts.push('snack', 'chips', 'crackers', 'snack bag', 'snack package');
+      }
+      
+      if (productNameLower.includes('cereal')) {
+        concepts.push('cereal', 'breakfast', 'cereal box', 'grain');
+      }
+      
+      if (productNameLower.includes('pasta') || productNameLower.includes('noodle')) {
+        concepts.push('pasta', 'noodle', 'pasta package', 'pasta box');
+      }
+      
+      if (productNameLower.includes('canned') || productNameLower.includes('can')) {
+        concepts.push('can', 'canned food', 'tin', 'metal container');
+      }
+    }
+    
+    // Electronic product concepts - enhanced
+    if (productNameLower.includes('electronic') || productNameLower.includes('device') || 
+        productNameLower.includes('gadget') || productNameLower.includes('appliance') ||
+        productNameLower.includes('phone') || productNameLower.includes('computer')) {
+      concepts.push('electronic', 'device', 'technology', 'gadget', 'box', 'product packaging');
+      
+      // Specific electronic types
+      if (productNameLower.includes('phone') || productNameLower.includes('mobile')) {
+        concepts.push('phone', 'mobile', 'smartphone', 'cell phone', 'screen');
+      }
+      
+      if (productNameLower.includes('computer') || productNameLower.includes('laptop')) {
+        concepts.push('computer', 'laptop', 'keyboard', 'screen', 'monitor');
+      }
+      
+      if (productNameLower.includes('camera')) {
+        concepts.push('camera', 'lens', 'digital camera', 'photography');
+      }
+      
+      if (productNameLower.includes('tv') || productNameLower.includes('television')) {
+        concepts.push('tv', 'television', 'screen', 'display');
+      }
+    }
+    
+    // Clothing product concepts - enhanced
+    if (productNameLower.includes('clothing') || productNameLower.includes('apparel') || 
+        productNameLower.includes('wear') || productNameLower.includes('garment') ||
+        productNameLower.includes('shirt') || productNameLower.includes('pants') ||
+        productNameLower.includes('shoe')) {
+      concepts.push('clothing', 'fashion', 'apparel', 'garment', 'clothes');
+      
+      // Specific clothing types
+      if (productNameLower.includes('shirt') || productNameLower.includes('tshirt')) {
+        concepts.push('shirt', 't-shirt', 'top', 'clothing item');
+      }
+      
+      if (productNameLower.includes('pant') || productNameLower.includes('trouser') || 
+          productNameLower.includes('jean')) {
+        concepts.push('pants', 'trousers', 'jeans', 'bottom', 'clothing item');
+      }
+      
+      if (productNameLower.includes('shoe') || productNameLower.includes('footwear')) {
+        concepts.push('shoe', 'footwear', 'sneaker', 'boot', 'pair');
+      }
+      
+      if (productNameLower.includes('jacket') || productNameLower.includes('coat')) {
+        concepts.push('jacket', 'coat', 'outerwear', 'winter clothing');
+      }
+    }
+  }
+  
+  // Enhanced GPC-based concepts
+  if (gpc) {
+    const gpcLower = gpc.toLowerCase();
+    
+    // Extract meaningful words from GPC
+    if (gpcLower.includes('-')) {
+      const gpcDescription = gpcLower.split('-')[1];
+      if (gpcDescription) {
+        const gpcKeywords = gpcDescription.split(' ')
+          .filter(word => word.length > 3)
+          .filter(word => !['with', 'from', 'this', 'that', 'and', 'for', 'the'].includes(word));
+        
+        concepts.push(...gpcKeywords);
+      }
+    }
+    
+    // Specific GPC category-based concepts
+    if (gpcLower.includes('oil') || gpcLower.includes('lubricant')) {
+      concepts.push('oil', 'lubricant', 'automotive', 'fluid', 'bottle');
+    }
+    
+    if (gpcLower.includes('beverage') || gpcLower.includes('drink')) {
+      concepts.push('beverage', 'drink', 'liquid', 'refreshment', 'bottle');
+    }
+    
+    if (gpcLower.includes('food') || gpcLower.includes('edible')) {
+      concepts.push('food', 'edible', 'consumable', 'package', 'nutrition');
+    }
+    
+    if (gpcLower.includes('clean') || gpcLower.includes('detergent')) {
+      concepts.push('cleaner', 'cleaning', 'detergent', 'soap', 'household');
+    }
+  }
+  
+  // Enhanced packaging concepts based on unit
+  if (unit) {
+    const unitLower = unit.toLowerCase();
+    
+    // Volume units suggest liquid products in bottles/containers
+    if (['l', 'ml', 'liter', 'litre', 'fl', 'oz', 'gallon'].some(u => unitLower.includes(u))) {
+      concepts.push('bottle', 'container', 'liquid', 'fluid', 'packaging');
+      
+      // Size-specific container concepts
+      if (['l', 'liter', 'litre', 'gallon'].some(u => unitLower.includes(u))) {
+        concepts.push('large bottle', 'large container', 'gallon', 'jug');
+      } else {
+        concepts.push('small bottle', 'flask', 'small container');
+      }
+    }
+    
+    // Weight units could suggest solid products in boxes/bags
+    else if (['kg', 'g', 'gram', 'lb', 'pound', 'oz', 'ounce'].some(u => unitLower.includes(u))) {
+      concepts.push('box', 'package', 'container', 'solid', 'packaging');
+      
+      // Size-specific package concepts
+      if (['kg', 'lb', 'pound'].some(u => unitLower.includes(u))) {
+        concepts.push('large package', 'large box', 'bag', 'sack');
+      } else {
+        concepts.push('small package', 'small box', 'packet');
+      }
+    }
+    
+    // Quantity units suggest discrete items
+    else if (['pc', 'piece', 'unit', 'each', 'ea', 'set'].some(u => unitLower.includes(u))) {
+      concepts.push('item', 'product', 'package', 'individual', 'unit');
+      
+      if (unitLower.includes('set')) {
+        concepts.push('set', 'collection', 'kit', 'multiple items');
+      }
+    }
+  }
+  
+  // Remove duplicates and return unique concepts
+  return [...new Set(concepts)];
+}
+
+/**
+ * Find matches between expected and detected concepts
+ * @param {Array} expectedConcepts - List of expected concepts
+ * @param {Array} detectedConcepts - List of detected concepts from Clarifai
+ * @returns {Array} - Matching concepts with confidence scores
+ */
+function findConceptMatches(expectedConcepts, detectedConcepts) {
+  const matches = [];
+  
+  // Check for exact and partial matches
+  expectedConcepts.forEach(expected => {
+    // Convert to lowercase for case-insensitive matching
+    const expectedLower = expected.toLowerCase();
+    
+    // Find exact matches
+    const exactMatch = detectedConcepts.find(
+      detected => detected.name.toLowerCase() === expectedLower
+    );
+    
+    if (exactMatch) {
+      matches.push({
+        expected: expected,
+        detected: exactMatch.name,
+        confidence: exactMatch.confidence,
+        matchType: 'exact'
+      });
+      return;
+    }
+    
+    // Find partial matches (concept is contained within detected concept)
+    const partialMatches = detectedConcepts.filter(
+      detected => detected.name.toLowerCase().includes(expectedLower) || 
+                  expectedLower.includes(detected.name.toLowerCase())
+    );
+    
+    if (partialMatches.length > 0) {
+      // Use the partial match with highest confidence
+      const bestPartialMatch = partialMatches.reduce(
+        (best, current) => current.confidence > best.confidence ? current : best,
+        partialMatches[0]
+      );
+      
+      // Calculate match quality based on string similarity
+      const matchQuality = calculateStringSimilarity(expectedLower, bestPartialMatch.name.toLowerCase());
+      const adjustedConfidence = bestPartialMatch.confidence * matchQuality;
+      
+      matches.push({
+        expected: expected,
+        detected: bestPartialMatch.name,
+        confidence: adjustedConfidence,
+        matchType: 'partial',
+        matchQuality: matchQuality
+      });
+    }
+  });
+  
+  // Look for semantic matches (conceptually related but not textually similar)
+  const semanticMatches = findSemanticMatches(expectedConcepts, detectedConcepts, matches);
+  matches.push(...semanticMatches);
+  
+  return matches;
+}
+
+/**
+ * Calculate string similarity between two strings (simple Levenshtein-inspired measure)
+ * @param {string} str1 - First string
+ * @param {string} str2 - Second string
+ * @returns {number} - Similarity score between 0 and 1
+ */
+function calculateStringSimilarity(str1, str2) {
+  // If either string contains the other completely, high similarity
+  if (str1.includes(str2) || str2.includes(str1)) {
+    return 0.9;
+  }
+  
+  // Split into words and check for word-level matches
+  const words1 = str1.split(/\s+/);
+  const words2 = str2.split(/\s+/);
+  
+  // Count matching words
+  let matchingWords = 0;
+  words1.forEach(word => {
+    if (words2.some(w => w === word || w.includes(word) || word.includes(w))) {
+      matchingWords++;
+    }
+  });
+  
+  // Word-level similarity
+  const wordSimilarity = words1.length > 0 ? matchingWords / words1.length : 0;
+  
+  // Character-level similarity (simplified)
+  let commonChars = 0;
+  for (let i = 0; i < str1.length; i++) {
+    if (str2.includes(str1[i])) {
+      commonChars++;
+    }
+  }
+  const charSimilarity = str1.length > 0 ? commonChars / str1.length : 0;
+  
+  // Combined similarity score with more weight on word-level matches
+  return wordSimilarity * 0.7 + charSimilarity * 0.3;
+}
+
+/**
+ * Find semantic matches between expected and detected concepts
+ * @param {Array} expectedConcepts - List of expected concepts
+ * @param {Array} detectedConcepts - List of detected concepts
+ * @param {Array} existingMatches - Already found matches to avoid duplicates
+ * @returns {Array} - Semantic matches found
+ */
+function findSemanticMatches(expectedConcepts, detectedConcepts, existingMatches) {
+  const semanticMatches = [];
+  
+  // Define semantic relationships between concepts
+  const semanticRelationships = {
+    // Container-related
+    'bottle': ['container', 'packaging', 'plastic', 'glass', 'jar', 'flask'],
+    'container': ['bottle', 'packaging', 'box', 'jar', 'can', 'plastic'],
+    'package': ['box', 'packaging', 'container', 'carton', 'wrapper'],
+    'box': ['package', 'container', 'carton', 'packaging', 'cardboard'],
+    
+    // Liquid-related
+    'liquid': ['fluid', 'water', 'oil', 'beverage', 'drink', 'bottle'],
+    'oil': ['lubricant', 'fluid', 'liquid', 'petroleum', 'bottle'],
+    'water': ['liquid', 'drink', 'beverage', 'bottle', 'fluid'],
+    'beverage': ['drink', 'liquid', 'bottle', 'can', 'water'],
+    
+    // Product categories
+    'food': ['edible', 'grocery', 'snack', 'meal', 'nutrition'],
+    'cleaning': ['detergent', 'soap', 'cleaner', 'household'],
+    'electronic': ['device', 'gadget', 'technology', 'appliance', 'digital'],
+    'clothing': ['apparel', 'garment', 'fashion', 'wear', 'outfit'],
+    
+    // Other common relationships
+    'vehicle': ['car', 'automobile', 'transportation', 'automotive'],
+    'plastic': ['synthetic', 'polymer', 'container', 'bottle'],
+    'soft drink': ['soda', 'beverage', 'carbonated', 'bottle'],
+    'detergent': ['soap', 'cleaner', 'washing', 'laundry']
+  };
+  
+  // Check if any expected concepts have semantic relationships with detected concepts
+  expectedConcepts.forEach(expected => {
+    // Skip if already matched
+    if (existingMatches.some(m => m.expected === expected)) {
+      return;
+    }
+    
+    const expectedLower = expected.toLowerCase();
+    
+    // Check if this concept has defined semantic relationships
+    if (semanticRelationships[expectedLower]) {
+      const relatedConcepts = semanticRelationships[expectedLower];
+      
+      // Find detected concepts that are semantically related
+      const semanticMatchesForConcept = detectedConcepts.filter(detected => 
+        relatedConcepts.includes(detected.name.toLowerCase())
+      );
+      
+      if (semanticMatchesForConcept.length > 0) {
+        // Use the semantic match with highest confidence
+        const bestMatch = semanticMatchesForConcept.reduce(
+          (best, current) => current.confidence > best.confidence ? current : best,
+          semanticMatchesForConcept[0]
+        );
+        
+        semanticMatches.push({
+          expected: expected,
+          detected: bestMatch.name,
+          confidence: bestMatch.confidence * 0.7, // Penalty for semantic match
+          matchType: 'semantic',
+          relationshipType: 'defined'
+        });
+      }
+    }
+    
+    // Check reverse relationships (detected concept in semanticRelationships)
+    detectedConcepts.forEach(detected => {
+      const detectedLower = detected.name.toLowerCase();
+      
+      if (semanticRelationships[detectedLower] && 
+          semanticRelationships[detectedLower].includes(expectedLower)) {
+        
+        semanticMatches.push({
+          expected: expected,
+          detected: detected.name,
+          confidence: detected.confidence * 0.7, // Penalty for semantic match
+          matchType: 'semantic',
+          relationshipType: 'reverse'
+        });
+      }
+    });
+  });
+  
+  // Remove duplicates (same expected+detected pairs)
+  const uniqueMatches = [];
+  semanticMatches.forEach(match => {
+    if (!uniqueMatches.some(m => 
+      m.expected === match.expected && m.detected === match.detected
+    )) {
+      uniqueMatches.push(match);
+    }
+  });
+  
+  return uniqueMatches;
+}
+
+/**
+ * Calculate verification score based on concept matches
+ * @param {Array} matches - List of matching concepts
+ * @param {Array} expectedConcepts - List of expected concepts
+ * @returns {Object} - Verification score and confidence
+ */
+function calculateVerificationScore(matches, expectedConcepts) {
+  if (expectedConcepts.length === 0) {
+    return { score: 0, confidence: 0 };
+  }
+  
+  // Calculate match ratio (percentage of expected concepts that were matched)
+  const matchRatio = matches.length / expectedConcepts.length;
+  
+  // Calculate average confidence of matches with weighting by match type
+  let weightedConfidenceSum = 0;
+  matches.forEach(match => {
+    // Apply weights based on match type
+    const weight = match.matchType === 'exact' ? 1.0 : 
+                   match.matchType === 'partial' ? 0.8 : 
+                   match.matchType === 'semantic' ? 0.6 : 0.5;
+    
+    weightedConfidenceSum += match.confidence * weight;
+  });
+  
+  const avgConfidence = matches.length > 0 ? weightedConfidenceSum / matches.length : 0;
+  
+  // Enhanced scoring that rewards having at least some good matches
+  // This makes the verification more lenient for partial matches
+  let score = 0;
+  
+  // Basic score from match ratio and confidence
+  const basicScore = matchRatio * 0.6 + avgConfidence * 0.4;
+  
+  // Bonus for having high-quality matches (exact matches with high confidence)
+  const exactMatchCount = matches.filter(m => 
+    m.matchType === 'exact' && m.confidence > 0.8
+  ).length;
+  
+  const exactMatchBonus = Math.min(0.2, exactMatchCount * 0.1);
+  
+  // Apply thresholds for minimum validation
+  if (matches.length >= 2 && avgConfidence > 0.7) {
+    // At least 2 good matches is enough for validation
+    score = Math.max(0.65, basicScore);
+  } else if (exactMatchCount >= 1) {
+    // Even one very good exact match provides minimum validation
+    score = Math.max(0.65, basicScore);
+  } else {
+    score = basicScore;
+  }
+  
+  // Apply exact match bonus
+  score = Math.min(1.0, score + exactMatchBonus);
+  
+  return {
+    score: score,
+    confidence: avgConfidence,
+    matchRatio: matchRatio,
+    exactMatchCount: exactMatchCount,
+    partialMatchCount: matches.filter(m => m.matchType === 'partial').length,
+    semanticMatchCount: matches.filter(m => m.matchType === 'semantic').length
+  };
 }
 
 /**
@@ -2028,6 +2621,43 @@ exports.getAllProducts = async (req, res) => {
           analysisMethod: imageAnalysis.analysisMetadata?.analysisMethod || 'nlp_semantic_pattern_matching',
           analysisVersion: imageAnalysis.analysisMetadata?.analysisVersion || '2.0'
         };
+      }
+      
+      // If product has image, verify it with Clarifai
+      if (product.front_image) {
+        try {
+          // Perform Clarifai-based image verification
+          const clarifaiVerification = await verifyClarifaiImage(
+            product.front_image,
+            product.productnameenglish,
+            product.gpc,
+            product.unit
+          );
+          
+          // Add Clarifai verification results to the verification object
+          verification.clarifaiVerification = clarifaiVerification;
+          
+          // If Clarifai verification fails, add issue
+          if (!clarifaiVerification.valid) {
+            verification.isValid = false;
+            verification.verificationStatus = 'unverified';
+            verification.issues.push({
+              rule: 'Image Content Verification',
+              severity: 'high',
+              message: clarifaiVerification.message || 'Image content does not match product description'
+            });
+            
+            // Add AI suggestion for image mismatch
+            verification.aiSuggestions.push({
+              field: 'front_image',
+              suggestion: `The product image doesn't clearly show a ${product.productnameenglish}. Please upload an image that clearly shows the product matching its description. We expected to see ${clarifaiVerification.expectedConcepts.slice(0, 5).join(', ')} but detected ${clarifaiVerification.detectedConcepts.slice(0, 3).map(c => c.name).join(', ')}.`,
+              importance: 'High'
+            });
+          }
+        } catch (clarifaiError) {
+          console.error('Clarifai verification error:', clarifaiError);
+          // Don't fail verification on Clarifai errors, just log them
+        }
       }
       
       // Return the product with all the verification data

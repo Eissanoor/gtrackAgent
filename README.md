@@ -118,3 +118,30 @@ npm run dev
 - `PUT /api/products/:id` - Update a product
 - `DELETE /api/products/:id` - Delete a product
 - `POST /api/products/validate` - Validate product relationships
+
+## Image Verification with Clarifai
+
+The system now uses Clarifai's image recognition technology to verify product images against product metadata. This ensures that product images match their descriptions, improving data quality and user experience.
+
+### Setup Instructions
+
+1. Sign up for a free Clarifai account at https://portal.clarifai.com/signup
+2. Get your API key from the Clarifai dashboard
+3. Add your Clarifai API key to your environment variables:
+   ```
+   CLARIFAI_API_KEY=your_clarifai_api_key
+   ```
+
+### How it Works
+
+The image verification system:
+1. Extracts expected concepts from product metadata (name, GPC, unit)
+2. Sends the product image to Clarifai's general recognition model
+3. Compares detected concepts with expected concepts
+4. Validates if the image matches the product description
+
+Example: If a product is named "Motor Oil", the system expects the image to contain concepts like "oil", "bottle", "container", "automotive", etc.
+
+### Customization
+
+You can adjust the matching logic and thresholds in the `verifyClarifaiImage` function in `src/controllers/productControllerV3.js`.
