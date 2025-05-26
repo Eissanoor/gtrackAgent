@@ -2082,7 +2082,10 @@ exports.getAllProducts = async (req, res) => {
       // Fetch products matching both productId AND member_id
       console.log('Attempting to query products table...');
       products = await safeDbQuery(() => gtrackDB.products.findMany({
-        where: whereConditions
+        where: whereConditions,
+        orderBy: {
+          updated_at: 'desc'
+        }
       }));
       console.log('Query completed, found products:', products.length);
       
