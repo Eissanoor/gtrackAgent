@@ -3,6 +3,7 @@ const dotenv = require('dotenv');
 const path = require('path');
 const expressLayouts = require('express-ejs-layouts');
 const cors = require('cors');
+const compression = require('compression');
 // Load environment variables
 dotenv.config();
 
@@ -19,7 +20,7 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
-
+app.use(compression());
 // Set view engine
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'src/views'));
