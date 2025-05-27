@@ -1,5 +1,5 @@
 const express = require('express');
-const productController = require('../controllers/productControllerV3');
+const productController = require('../controllers/productControllerV4');
 const router = express.Router();
 
 // GET /api/products - Get all products for testing
