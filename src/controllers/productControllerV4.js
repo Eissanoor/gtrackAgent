@@ -2207,36 +2207,36 @@ exports.getAllProducts = async (req, res) => {
   try {
     
     
-    // Check if specific product ID(s) is/are requested
-    const productId = req.query.id;
+    // Check if specific barcode(s) or member_id is/are requested
+    const barcode = req.query.barcode;
     const member_id = req.query.member_id;
   
     
     let products = [];
     let totalCount = 0;
     
-    if (productId || member_id) {
+    if (barcode || member_id) {
       // Build where conditions with AND logic
       const whereConditions = {
         deleted_at: null,
         AND: []
       };
       
-      // Handle single ID or array of IDs
-      if (productId) {
+      // Handle single barcode or array of barcodes
+      if (barcode) {
         // Check if it's an array (comma-separated string or actual array)
-        const isMultipleIds = productId.toString().includes(',');
+        const isMultipleBarcodes = barcode.toString().includes(',');
         
-        if (isMultipleIds) {
-          // Handle comma-separated IDs
-          const idArray = productId.toString().split(',').map(id => id.trim());
+        if (isMultipleBarcodes) {
+          // Handle comma-separated barcodes
+          const barcodeArray = barcode.toString().split(',').map(code => code.trim());
           whereConditions.AND.push({ 
-            id: { in: idArray }
+            barcode: { in: barcodeArray }
           });
-          console.log(`Processing ${idArray.length} product IDs: ${idArray.join(', ')}`);
+          console.log(`Processing ${barcodeArray.length} barcodes: ${barcodeArray.join(', ')}`);
         } else {
-          // Single ID
-          whereConditions.AND.push({ id: productId });
+          // Single barcode
+          whereConditions.AND.push({ barcode: barcode });
         }
       }
       
@@ -2251,7 +2251,7 @@ exports.getAllProducts = async (req, res) => {
         return res.status(500).json(fallbackResponse);
       }
       
-      // Fetch products matching both productId AND member_id
+      // Fetch products matching barcode AND/OR member_id
       console.log('Attempting to query products table...');
       products = await safeDbQuery(() => gtrackDB.products.findMany({
         where: whereConditions,
@@ -3026,10 +3026,10 @@ exports.getAllProducts = async (req, res) => {
     }));
     
     // Customize response based on request type (single product, multiple products, or paginated)
-    if (productId) {
-      const isMultipleIds = productId.toString().includes(',');
+    if (barcode) {
+      const isMultipleBarcodes = barcode.toString().includes(',');
       
-      if (isMultipleIds) {
+      if (isMultipleBarcodes) {
         // For multiple product request, return array of products
         res.json({
           success: true,
