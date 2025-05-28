@@ -2410,13 +2410,7 @@ exports.getAllProducts = async (req, res) => {
       const parsedUnit = parseUnit(product.unit, unitData);
       
       // Enhanced product with parsed data
-      const enhancedProduct = {
-        ...product,
-        parsedData: {
-          brick: parsedBrick,
-          unit: parsedUnit
-        }
-      };
+      
       
       // Initialize verification object with AI analysis data
       const verification = {
@@ -3027,10 +3021,6 @@ exports.getAllProducts = async (req, res) => {
       
       // Return the product with all the verification data
       return {
-        ...enhancedProduct,
-        brandData,       // Include the brand data
-        unitData,        // Include the unit data
-        brickData,       // Include the Brick data
         verification     // Include the AI verification results
       };
     }));
