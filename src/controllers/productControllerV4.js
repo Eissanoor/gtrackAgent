@@ -2037,6 +2037,165 @@ function analyzeProductImage(imageUrl, brick, unit, productName = '') {
 }
 
 /**
+ * Validates if a brand name follows proper formatting and naming conventions
+ * @param {string} brandName - The brand name to validate
+ * @returns {Object} - Validation result with valid flag, score, issues and suggestions
+ */
+function validateBrandName(brandName) {
+  if (!brandName) {
+    return {
+      valid: false,
+      score: 0,
+      issues: ['Brand name is missing'],
+      suggestions: ['Add a proper brand name']
+    };
+  }
+
+  const validation = {
+    valid: true,
+    score: 100,
+    issues: [],
+    suggestions: [],
+    analysis: {
+      properNoun: true,
+      wellFormatted: true,
+      containsTestData: false,
+      hasSpecialCharacters: false,
+      isTooLong: false
+    }
+  };
+
+  // Check for testing phrases that should not be in production data
+  const testingPhrases = ['test', 'testing', 'sample', 'dummy', 'example', 'temp'];
+  if (testingPhrases.some(phrase => brandName.toLowerCase().includes(phrase))) {
+    validation.valid = false;
+    validation.score -= 40;
+    validation.issues.push('Brand name contains testing phrases');
+    validation.suggestions.push('Replace testing brand name with the actual product brand');
+    validation.analysis.containsTestData = true;
+  }
+
+  // Check for special characters and separators that shouldn't be in brand names
+  const invalidCharRegex = /[\\\/\,\|\+\=\_\[\]\{\}\(\)\*\&\^\%\$\#\@\!]/;
+  if (invalidCharRegex.test(brandName)) {
+    validation.valid = false;
+    validation.score -= 30;
+    validation.issues.push('Brand name contains invalid special characters');
+    validation.suggestions.push('Remove special characters like commas, brackets, etc. from the brand name');
+    validation.analysis.hasSpecialCharacters = true;
+  }
+
+  // Check if brand name is properly capitalized (proper noun format)
+  const words = brandName.split(' ');
+  const properCapitalization = words.every(word => 
+    word.length === 0 || (word[0] === word[0].toUpperCase() && word.substring(1).toLowerCase() === word.substring(1))
+  );
+
+  if (!properCapitalization) {
+    validation.score -= 20;
+    validation.issues.push('Brand name is not properly capitalized');
+    validation.suggestions.push('Format brand name as a proper noun with initial capital letters');
+    validation.analysis.properNoun = false;
+  }
+
+  // Check if brand name is too long (likely contains extra information)
+  if (brandName.length > 30) {
+    validation.score -= 20;
+    validation.issues.push('Brand name is unusually long');
+    validation.suggestions.push('Keep brand name concise and avoid including product descriptions in the brand field');
+    validation.analysis.isTooLong = true;
+  }
+
+  // If multiple words, check for excessive descriptive terms
+  if (words.length > 3) {
+    validation.score -= 15;
+    validation.issues.push('Brand name contains too many words');
+    validation.suggestions.push('Use only the official brand name without additional descriptors');
+  }
+
+  // Check for numeric strings that likely aren't part of a brand name
+  const numericRegex = /\d{4,}/;  // 4+ consecutive digits
+  if (numericRegex.test(brandName)) {
+    validation.score -= 25;
+    validation.issues.push('Brand name contains long numeric strings');
+    validation.suggestions.push('Remove numeric identifiers or codes from the brand name');
+  }
+
+  // Brand name shouldn't be all uppercase (looks like acronym or placeholder)
+  if (brandName === brandName.toUpperCase() && brandName.length > 3) {
+    validation.score -= 15;
+    validation.issues.push('Brand name is all uppercase');
+    validation.suggestions.push('Format brand name properly rather than using all capital letters');
+  }
+
+  // Final validity determination based on score
+  validation.valid = validation.score >= 70;
+
+  return validation;
+}
+
+/**
+ * Generates properly formatted brand name suggestions based on input
+ * @param {string} brandName - The original brand name to improve
+ * @returns {string} - A properly formatted brand name suggestion
+ */
+function formatBrandNameSuggestion(brandName) {
+  if (!brandName) return '';
+  
+  // Handle all uppercase names (like "SAMA OIL")
+  if (brandName === brandName.toUpperCase() && brandName.length > 3) {
+    // Convert to proper noun format
+    return brandName.split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  }
+  
+  // Remove special characters and testing phrases
+  let cleanedName = brandName;
+  
+  // Replace commas, brackets, and other special characters with spaces
+  cleanedName = cleanedName.replace(/[\\\/\,\|\+\=\_\[\]\{\}\(\)\*\&\^\%\$\#\@\!]/g, ' ');
+  
+  // Remove common testing phrases
+  const testingPhrases = ['test', 'testing', 'sample', 'dummy', 'example', 'temp'];
+  testingPhrases.forEach(phrase => {
+    // Case insensitive replace with regex
+    const regex = new RegExp('\\b' + phrase + '\\b', 'gi');
+    cleanedName = cleanedName.replace(regex, '');
+  });
+  
+  // Normalize spaces (replace multiple spaces with a single space)
+  cleanedName = cleanedName.replace(/\s+/g, ' ').trim();
+  
+  // Truncate if too long (over 30 chars) but try to preserve whole words
+  if (cleanedName.length > 30) {
+    // Find the last space before 30 chars
+    const lastSpace = cleanedName.substring(0, 30).lastIndexOf(' ');
+    if (lastSpace > 0) {
+      cleanedName = cleanedName.substring(0, lastSpace);
+    } else {
+      cleanedName = cleanedName.substring(0, 30);
+    }
+  }
+  
+  // Handle numeric sequences - remove long number sequences
+  cleanedName = cleanedName.replace(/\b\d{4,}\b/g, '').trim();
+  
+  // Properly capitalize each word for proper noun format
+  cleanedName = cleanedName.split(' ')
+    .filter(word => word.length > 0) // Remove empty elements
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+  
+  // If ended up empty after cleaning, return empty string
+  if (cleanedName.length === 0) {
+    return '';
+  }
+  
+  return cleanedName;
+}
+
+/**
  * Validate product relationship between brand, unit, and GCP.
  * This function acts as an AI agent to verify if the combinations make sense.
  * The function automatically fetches product data and analyzes if the relationships are valid.
@@ -2794,6 +2953,62 @@ exports.getAllProducts = async (req, res) => {
         } catch (clarifaiError) {
           console.error('Clarifai verification error:', clarifaiError);
           // Don't fail verification on Clarifai errors, just log them
+        }
+      }
+      
+      // New validation for brand name
+      if (product.BrandName) {
+        const brandValidation = validateBrandName(product.BrandName);
+        
+        // Get formatted brand name suggestion
+        const brandSuggestion = formatBrandNameSuggestion(product.BrandName);
+        
+        // Add brand validation results to verification
+        if (!brandValidation.valid) {
+          verification.isValid = false;
+          verification.verificationStatus = 'unverified';
+          
+          // Add brand-related issues
+          verification.issues.push({
+            rule: 'Brand Name Format',
+            severity: 'high',
+            message: brandValidation.issues.join('. ')
+          });
+          
+          // Add to issueFields
+          verification.issueFields.BrandName = verification.issueFields.BrandName || {
+            hasIssue: true,
+            severity: 'high',
+            reason: 'Brand name format issues',
+            details: {
+              score: brandValidation.score,
+              analysis: brandValidation.analysis,
+              suggestedFormat: brandSuggestion
+            }
+          };
+          
+          // Add brand-related suggestions with improved formatting
+          verification.aiSuggestions.push({
+            field: 'BrandName',
+            suggestion: brandValidation.suggestions.join(' '),
+            importance: 'High',
+            validationDetails: {
+              properNoun: brandValidation.analysis.properNoun,
+              wellFormatted: !brandValidation.analysis.hasSpecialCharacters,
+              containsTestData: brandValidation.analysis.containsTestData,
+              score: brandValidation.score
+            },
+            formattedSuggestion: brandSuggestion,
+            originalValue: product.BrandName
+          });
+        } else {
+          // Add positive note for valid brand name
+          verification.positivePoints = verification.positivePoints || [];
+          verification.positivePoints.push({
+            rule: 'Brand Name Format',
+            message: 'Brand name is properly formatted',
+            score: brandValidation.score
+          });
         }
       }
       
