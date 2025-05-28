@@ -2409,8 +2409,6 @@ exports.getAllProducts = async (req, res) => {
       const parsedBrick = parseBrick(product.gpc);
       const parsedUnit = parseUnit(product.unit, unitData);
       
-      // Enhanced product with parsed data
-      
       
       // Initialize verification object with AI analysis data
       const verification = {
@@ -2423,7 +2421,7 @@ exports.getAllProducts = async (req, res) => {
         aiSuggestions: [],     // AI suggestions for improvement
         issueFields: {}       // Object to track which fields have issues
       };
-      
+
       // RULE 1: Check for required fields (front_image, BrandName, gpc, unit)
       // If front_image is null, product is unverified
       if (!product.front_image) {
@@ -3019,9 +3017,11 @@ exports.getAllProducts = async (req, res) => {
         }
       }
       
-      // Return the product with all the verification data
+      // Return only essential data fields along with verification results
       return {
-        verification     // Include the AI verification results
+        id: product.id,                     // Product ID
+        barcode: product.barcode,           // Product barcode
+        verification: verification          // Include the AI verification results
       };
     }));
     
