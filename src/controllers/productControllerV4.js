@@ -2207,7 +2207,7 @@ exports.getAllProducts = async (req, res) => {
   try {
     
     
-    // Check if specific product ID is requested
+    // Check if specific product ID(s) is/are requested
     const productId = req.query.id;
     const member_id = req.query.member_id;
   
@@ -2222,9 +2222,22 @@ exports.getAllProducts = async (req, res) => {
         AND: []
       };
       
-      // Add conditions based on which parameters are provided
+      // Handle single ID or array of IDs
       if (productId) {
-        whereConditions.AND.push({ id: productId });
+        // Check if it's an array (comma-separated string or actual array)
+        const isMultipleIds = productId.toString().includes(',');
+        
+        if (isMultipleIds) {
+          // Handle comma-separated IDs
+          const idArray = productId.toString().split(',').map(id => id.trim());
+          whereConditions.AND.push({ 
+            id: { in: idArray }
+          });
+          console.log(`Processing ${idArray.length} product IDs: ${idArray.join(', ')}`);
+        } else {
+          // Single ID
+          whereConditions.AND.push({ id: productId });
+        }
       }
       
       if (member_id) {
@@ -3022,13 +3035,24 @@ exports.getAllProducts = async (req, res) => {
       };
     }));
     
-    // Customize response based on request type (single product or paginated)
+    // Customize response based on request type (single product, multiple products, or paginated)
     if (productId) {
-      // For single product request, return simplified response
-      res.json({
-        success: true,
-        data: verifiedProducts[0]
-      });
+      const isMultipleIds = productId.toString().includes(',');
+      
+      if (isMultipleIds) {
+        // For multiple product request, return array of products
+        res.json({
+          success: true,
+          productCount: verifiedProducts.length,
+          data: verifiedProducts
+        });
+      } else {
+        // For single product request, return simplified response
+        res.json({
+          success: true,
+          data: verifiedProducts[0]
+        });
+      }
     } else {
       // For paginated request, include pagination info
       const page = parseInt(req.query.page) || 1;
