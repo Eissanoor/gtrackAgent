@@ -1003,10 +1003,12 @@ async function verifyClarifaiImage(imageUrl, productName, gpc, unit) {
   try {
     if (!imageUrl) {
       return {
-        valid: false,
+        valid: true, // Change to true by default - don't fail verification
         message: 'Image URL is missing',
         matches: [],
-        confidence: 0
+        confidence: 0,
+        apiStatus: 'skipped',
+        error: 'missing_url'
       };
     }
 
@@ -1060,17 +1062,22 @@ async function verifyClarifaiImage(imageUrl, productName, gpc, unit) {
       confidence: verificationScore.confidence,
       detectedConcepts: detectedConcepts.slice(0, 10), // Return top 10 concepts
       expectedConcepts: expectedConcepts,
-      imageUrl: formattedImageUrl // Include the processed URL for debugging
+      imageUrl: formattedImageUrl, // Include the processed URL for debugging
+      apiStatus: 'success'
     };
   } catch (error) {
     console.error('Clarifai image verification error:', error);
+    
+    // Return a valid result despite the error to prevent verification failure
     return {
-      valid: false,
-      message: `Failed to verify image: ${error.message}`,
+      valid: true, // Change to true to avoid marking products as unverified
+      message: `Image verification service unavailable: ${error.message}`,
       error: error.message,
       matches: [],
       confidence: 0,
-      imageUrl: imageUrl // Include the original URL for debugging
+      imageUrl: imageUrl, // Include the original URL for debugging
+      apiStatus: error.status === 402 ? 'payment_required' : 'api_error',
+      errorCode: error.status || error.code
     };
   }
 }
@@ -2917,8 +2924,9 @@ exports.getAllProducts = async (req, res) => {
           // Add Clarifai verification results to the verification object
           verification.clarifaiVerification = clarifaiVerification;
           
-          // If Clarifai verification fails, add issue
-          if (!clarifaiVerification.valid) {
+          // Only mark as unverified if Clarifai explicitly identifies content mismatch
+          // Don't fail verification for API errors
+          if (!clarifaiVerification.valid && clarifaiVerification.apiStatus === 'success') {
             verification.isValid = false;
             verification.verificationStatus = 'unverified';
             verification.issues.push({
@@ -2934,8 +2942,8 @@ exports.getAllProducts = async (req, res) => {
               severity: 'high',
               reason: 'Image content does not match product description',
               details: {
-                expectedConcepts: clarifaiVerification.expectedConcepts.slice(0, 5),
-                detectedConcepts: clarifaiVerification.detectedConcepts.slice(0, 3).map(c => c.name),
+                expectedConcepts: clarifaiVerification.expectedConcepts?.slice(0, 5) || [],
+                detectedConcepts: clarifaiVerification.detectedConcepts?.slice(0, 3)?.map(c => c.name) || [],
                 score: clarifaiVerification.score
               }
             };
@@ -2943,21 +2951,38 @@ exports.getAllProducts = async (req, res) => {
             // Add AI suggestion for image mismatch
             verification.aiSuggestions.push({
               field: 'front_image',
-              suggestion: `The product image doesn't clearly show a ${product.productnameenglish}. Please upload an image that clearly shows the product matching its description. We expected to see ${clarifaiVerification.expectedConcepts.slice(0, 5).join(', ')} but detected ${clarifaiVerification.detectedConcepts.slice(0, 3).map(c => c.name).join(', ')}.`,
+              suggestion: `The product image doesn't clearly show a ${product.productnameenglish}. Please upload an image that clearly shows the product matching its description. We expected to see ${clarifaiVerification.expectedConcepts?.slice(0, 5)?.join(', ') || 'relevant product features'} but detected ${clarifaiVerification.detectedConcepts?.slice(0, 3)?.map(c => c.name)?.join(', ') || 'unrelated elements'}.`,
               importance: 'High'
             });
-          } else {
+          } else if (clarifaiVerification.apiStatus !== 'success') {
+            // Add a note about Clarifai service being unavailable
+            verification.notes = verification.notes || [];
+            verification.notes.push({
+              type: 'api_unavailable',
+              message: `Image content verification skipped: ${clarifaiVerification.message}`,
+              details: {
+                apiStatus: clarifaiVerification.apiStatus,
+                errorCode: clarifaiVerification.errorCode
+              }
+            });
+          } else if (clarifaiVerification.valid) {
             // If verification passes, add a positive note
             verification.positivePoints = verification.positivePoints || [];
             verification.positivePoints.push({
               rule: 'Image Content Verification',
               message: 'Product image correctly matches the product description',
-              score: Math.round(clarifaiVerification.score * 100)
+              score: Math.round((clarifaiVerification.score || 0.7) * 100)
             });
           }
         } catch (clarifaiError) {
           console.error('Clarifai verification error:', clarifaiError);
           // Don't fail verification on Clarifai errors, just log them
+          verification.notes = verification.notes || [];
+          verification.notes.push({
+            type: 'api_error',
+            message: `Image content verification failed: ${clarifaiError.message}`,
+            errorType: 'clarifai_exception'
+          });
         }
       }
       
